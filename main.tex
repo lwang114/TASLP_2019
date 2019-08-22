@@ -47,8 +47,6 @@
 % The testflow support page is at:
 % http://www.michaelshell.org/tex/testflow/
 
-
-
 \documentclass[journal]{IEEEtran}
 %
 % If IEEEtran.cls has not been installed into the LaTeX system files,
@@ -65,7 +63,7 @@
 
 % *** MISC UTILITY PACKAGES ***
 %
-%\usepackage{ifpdf}
+\usepackage{ifpdf}
 % Heiko Oberdiek's ifpdf.sty is very useful if you need conditional
 % compilation based on whether the output is pdf or dvi.
 % usage:
@@ -88,7 +86,7 @@
 
 % *** CITATION PACKAGES ***
 %
-%\usepackage{cite}
+\usepackage{cite}
 % cite.sty was written by Donald Arseneau
 % V1.6 and later of IEEEtran pre-defines the format of the cite.sty package
 % \cite{} output to follow that of the IEEE. Loading the cite package will
@@ -345,7 +343,8 @@
 % (Unless specifically asked to do so by the journal or conference you plan
 % to submit to, of course. )
 
-
+\usepackage{multirow}
+\usepackage{multicol}
 % correct bad hyphenation here
 \hyphenation{op-tical net-works semi-conduc-tor}
 \newcommand{\reals}{\mathbb R}
@@ -353,6 +352,7 @@
 \newcommand{\bI}{\mathbf I}
 \newcommand{\ba}{\mathbf a}
 \newcommand{\bd}{\mathbf d}
+\newcommand{\bn}{\mathbf n}
 \newcommand{\bv}{\mathbf v}
 \newcommand{\bw}{\mathbf w}
 \newcommand{\bx}{\mathbf x}
@@ -385,8 +385,8 @@
 %\thanks{M. Shell was with the Department
 %of Electrical and Computer Engineering, Georgia Institute of Technology, Atlanta,
 %GA, 30332 USA e-mail: (see http://www.michaelshell.org/contact.html).}% <-this % stops a space
-\thanks{J. Doe and J. Doe are with Anonymous University.}% <-this % stops a space
-\thanks{Manuscript received April 19, 2005; revised August 26, 2015.}}
+%\thanks{J. Doe and J. Doe are with Anonymous University.}% <-this % stops a space
+\thanks{Manuscript received August 15, 2019; revised August 15, 2019}}
 
 % note the % following the last \IEEEmembership and also \thanks - 
 % these prevent an unwanted space from occurring between the last author name
@@ -409,8 +409,8 @@
 
 
 % The paper headers
-\markboth{Journal of \LaTeX\ Class Files,~Vol.~14, No.~8, August~2015}%
-{Shell \MakeLowercase{\textit{et al.}}: Bare Demo of IEEEtran.cls for IEEE Journals}
+\markboth{IEEE Transaction of Audio, Speech and Language Processing}%
+{Shell \MakeLowercase{\textit{et al.}}: Multimodal word discovery with spoken descriptions and visual concepts}
 % The only time the second header will appear is for the odd numbered pages
 % after the title page when using the twoside option.
 % 
@@ -442,7 +442,8 @@
 % As a general rule, do not put math, special symbols or citations
 % in the abstract or keywords.
 \begin{abstract}
-This paper demonstrates three systems capable of performing the multimodal word discovery tasks. A multimodal word discovery system accepts, as input, a database of spoken descriptions of images (or a set of corresponding phone transcriptions) and learns a lexicon which a mapping from a phone strings to their associated image concepts. Several systems are demostrated: two based on statistical machine translation (SMT), two based on neural machine translation (NMT). The systems are then compared with various existing unsupervised word discovery systems and speech-to-translation systems in the task of word discovery.  
+This paper demonstrates systems capable of performing the multimodal word discovery tasks on the phone-level and audio-level. A multimodal word discovery system accepts, as input, a database of spoken descriptions of images (or a set of corresponding phone transcriptions) and learns a lexicon which a mapping from a phone strings to their associated image concepts. Four models are demonstrated: three models based on statistical machine translation (SMT) and one based on neural machine translation (NMT). The systems are trained with phonetic transcriptions, MFCC and multilingual bottleneck features (MBN) and compared with the existing algorithms for word discovery and speech-to-image retrieval.  
+%This paper demonstrates systems capable of performing the multimodal word discovery tasks on the phone-level and audio-level. A multimodal word discovery system accepts, as input, a database of spoken descriptions of images (or a set of corresponding phone transcriptions) and learns a lexicon which a mapping from a phone strings to their associated image concepts. Several systems are demonstrated: two based on statistical machine translation (SMT), two based on neural machine translation (NMT). The systems are then compared with various existing unsupervised word discovery systems in the task of word discovery.  
 \end{abstract}
 
 % Note that keywords are not normally used for peerreview papers.
@@ -468,7 +469,9 @@ Unsupervised word discovery, machine translation, multimodal learning
 
 
 \section{Introduction}
-Unsupervised word discovery aims to segment and cluster spoken sentences or its corresponding phone transcriptions into word. It is useful for speech technology for unwritten language or language in which word segmentation and lexicon will be prohibitively expensive to acquire. Automatic word discovery system exists \cite{Bharadwaj2013, Rasanen2015, Kamper2017}, but the task has been shown to be quite challenging.     
+Unsupervised word discovery aims to segment and cluster spoken sentences or its corresponding phone transcriptions into word. It is useful for speech technology for unwritten language or language in which word segmentation and lexicon will be prohibitively expensive to acquire. Automatic word discovery system exists \cite{Bharadwaj2013, Rasanen2015, Kamper2017}, but the task has been shown to be quite challenging. In this paper, we explore the use of an additional information source, image for unsupervised word discovery: if each utterance is known to be a spoken description of an image, the image labels can be seen as a bag of noisy word labels for the speech.  
+
+
 % The very first letter is a 2 line initial drop letter followed
 % by the rest of the first word in caps.
 % 
@@ -497,25 +500,79 @@ Unsupervised word discovery aims to segment and cluster spoken sentences or its 
  
 %\hfill August 26, 2015
 \section{Related works}
+Several works have used raw audio to discover word units. Methods that imitate child language acquisition often begin by finding recurring patterns in audio \cite{Rasanen2015, Park2008}. Non-parametric Bayesian hidden Markov models (HMMs) have been widely used in word-unit discovery and various other clustering problem with audio, e.g., a latent Dirichlet process with HMM acoustic models can be used to jointly segment and cluster raw audio into sub-word units \cite{Lee2012, Ondel2018}, or the HMM can be regularized using an L-p norm as sparsity constraint to encourage purer clusters \cite{Bharadwaj2013}. Using word embeddings as features, it is possible to perform automatic word discovery by modeling each word as a Gaussian mixture model with a Dirichlet prior on its parameters; the model can be trained using expectation maximization (EM) with Gibbs sampling, or using a weighted K-means algorithm \cite{Kamper2017}. The segmental embedded systems in \cite{Kamper2017} outperforms the previous systems by 10 \% boundary F-score and 30 \% word token F-score for the low-resource language Xitsonga during the 2017 zero-resource speech challenge (ZRSC) \cite{Dunbar2017}. Other works have focused on discovering word units from phone sequences or character sequences, such as models based on Pitman-Yor process \cite{Johnson2007}. 
+
+A related task to the unsupervised spoken word discovery is query-by-example keyword search in audio, which aims to only search for a collection of keywords and leaves the rest of the speech as background.
+%Several systems has reported results on the benchmark for the task,
+The most recent widely published benchmark evaluation of this task was the
+NIST OpenKWS evaluation set on the language Georgian.
+The Kaldi OpenKWS system \cite{Trmal2017} trained a DNN-HMM hybrid system and decode the OOV queries by fusing the decoding scores on word-level (with proxy word), phonetic-level and morpheme-level lattices to maximize the ATWV score.
+The BBN system \cite{Alumae16} combined several acoustic models based on DNN, LSTM and CNN on subword units to perform joint decoding and handled OOV queries on the sub-word unit.
+The STC keyword search system \cite{Medennikov2017} combined 9 different acoustic models based on DNN and GMM with a phone-posterior based OOV decoder \cite{Khokhlov2017}.  
+
+A multilingual approach for spoken word discovery has been proposed by \cite{Stahlberg12}, who developed a variant of the IBM model 3 SMT to discover word units of an under-resourced language
+by aligning parallel texts in
+%with transcriptions of
+a high-resourced language.
+%\cite{Duong16} first proposed the use of
+The same task has been attempted~\cite{Duong16} using NMT with attention \cite{Bahdanau14} to align speech or phone sequences to the word labels of the high-resourced language; modifications of the attention mechanism to ensure coverage and richer context.
+If the true phone sequence in the under-resourced language is unknown,  pseudo-phone labels generated by an unsupervised non-parametric Bayesian model \cite{Ondel2018} can be used as input to the NMT~\cite{Godard2018}.
+ 
+%Other works have been done on discovering semantic units via multimodal learning of natural language and image  \cite{Hodosh2010}\cite{Harwath15}\cite{Harwath16-ULO}\cite{Harwath17}.
+The database used in this paper was first published as an image captioning corpus, for which the baseline system
+\cite{Hodosh2010} used IBM model I and II \cite{Brown93} combined with Kernel Canonical Component Analysis (KCCA) for mapping both image and text to a joint space. \cite{Karpathy14, Karpathy15} developed a two-branch neural network system to learn the joint representation of image and text.
+%\cite{Harwath15}\cite{Harwath16-ULO}\cite{Harwath17} discovered the semantic units with audio and image after training an end-to-end retrieval system.
+The speech files were first used to train an end-to-end image retrieval system~\cite{Harwath15,Harwath16-ULO}, and were then further analyzed to discover word-like units~\cite{Harwath17}.
+The task of multimodal word discovery was, we believe, first proposed in~\cite{Harwath17}, where it was performed as a generalization of the image retrieval problem: every possible subsegment of the audio file was tested as a query, and every possible sub-region of the image was tested as a possible retrieval result.
+
+\section{Notations}
+In the paper, 
+we use $N(x|\mu, \Sigma)$ to denote the multivariate normal distribution with mean $\mu$ and covariance matrix $\Sigma$ evaluated at point $x$. Without specification, we shorten the probability by writing only the values taken by the random variables, for instance, $\mathbf{Pr}[X=x]=: p(x)$ and $\mathbf{Pr}[X=x|Y=y]=: p(x|y)$ and the parameters of the distribution is often omitted for simplicity: $p(\cdot;\theta) =: p(\cdot)$. Further, i.i.d stands for ``independent, identically distributed'' in the subsequent sections. 
+
+$c(u; x)$ is the \textit{count} of occurrences when random variable $U$ taking value $u$ when $X$ is observed to be $x$. $c(u|v; x)$ represents the count of random variable $U$ with value $u$ is \textit{aligned} to random variable $V$ with $v$, which is equivalent to $c(i; x)$ where $I$ is the alignment variable between $U$ and $V$. $\mathbb E_x[\cdot]$ denotes the expectation over variable $X$ and $\langle \cdot \rangle$ is a shorthand to denote the expectation of the counts. For vectors and sequences, we use $x_{1:t}$ to represent the elements from index $1$ to $t$. 
+
 \section{Problem formulation}
-Suppose we have a sequence of audio feature frames $x_1, \ldots, x_{T_x}, x \in \mathcal X$ and a set of image concepts $y_1, \ldots, y_{T_y}, y \in \mathcal Y \cup \{NULL\}$. The goal of our algorithm is a sequence learning problem to align every audio feature frames $\mathbf x = [x_1, \ldots, x_{T_x}]$ to an image concept $\mathbf y = [y_1, \ldots, y_{T_y}]$. We assume that $T_x > T_y$. In other words, we seek an alignment matrix $A \in [0, 1]^{T_x \times T_y}=[\mathbf a_1^\top, \ldots, \mathbf a_{T_x}^{\top}]^{\top} = [\tilde{\mathbf a}_1 \ldots \tilde{\mathbf a}_{T_y}]$. A key assumption of our model is the constraint:
+\subsection{Word Discovery with SMT Models}
+Suppose we have a sequence of audio feature frames $x_1, \ldots, x_{T_x}, x \in \mathcal X$ and a set of image concepts $y_1, \ldots, y_{T_y}, y \in \mathcal Y \cup \{NULL\}$. The goal of our algorithm is a sequence learning problem to align every audio feature frames $\mathbf x = [x_1, \ldots, x_{T_x}]$ to an image concept $\mathbf y = [y_1, \ldots, y_{T_y}]$.  We assume that $T_x > T_y$. In other words, we seek an alignment matrix $A \in [0, 1]^{T_x \times T_y}=[\mathbf a_1^\top, \ldots, \mathbf a_{T_x}^{\top}]^{\top} = [\tilde{\mathbf a}_1 \ldots \tilde{\mathbf a}_{T_y}]$. A key assumption of our model is the constraint:
 \begin{align}\label{eq:one-concept-assumption}
-    \sum_{j=1}^{T_y} a_{ij} = 1, i = 1, \ldots, T_x,
+    \sum_{i=1}^{T_y} a_{ti} = 1, t = 1, \ldots, T_x,
 \end{align}
-which ensures that one feature frame is aligned to only one concept. Therefore our model tries to maximize:
-\begin{align}\label{eq:trans_prob}
+which ensures that one feature frame is aligned to one and only one concept. Note that though there may exist some audio frames that are unaligned to any of the image concepts, the \texttt{NULL} symbol acts as a placeholder concept to enforce the constraint. Further, for notational convenience, let $i(t)$ be the index of the image concept aligned frame at time $t$, i.e., $a_{ti(t)} = 1$. 
+
+Therefore our SMT model tries to maximize:
+\begin{align}\label{eq:smt_trans_prob}
     p(\mathbf{x}|\mathbf{y}) = \sum_{\mathbf{A}\in \{0, 1\}^{T_y  \times T_x}} p(\mathbf{A}|\mathbf{y}) p(\mathbf{x}|\mathbf{y}, \mathbf{A}),
 \end{align}
-for each input-concept sequence pair. When $\mathcal X$ is a finite set of phonetic symbols for the spoken language, the problem is refered later as \textit{phone-level} word discovery; when $\mathcal X = \reals^{D}$, where $D$ is the dimension of the acoustic feature such as ceptral features, bottleneck features or other acoustic embeddings, the problem is refered as the \textit{audio-level} word discovery.
+for each input-concept sequence pair. In this case, $\mathbf A$ is simply a binary matrix with each row being a one-hot vector. When $\mathcal X$ is a finite set of groundtruth phonetic symbols for the spoken language, the problem is referred later as \textit{phone-level} word discovery; when $\mathcal X = \reals^{D}$, where $D$ is the dimension of some acoustic features such as mel-frequency ceptral coefficients \cite{Davis1980}, bottleneck features \cite{Roweis1997, Fer2017} or acoustic embeddings, the problem is referred as the \textit{audio-level} word discovery. For the audio-level word discovery, we largely ignore the speaker variation in the subsequent discussion and assumed proper speaker adaptation techniques has been applied before the processing of our models.
+We have proposed several SMT models for both phone-level and audio-level discovery and their relations are shown in Fig. (\ref{fig:model_comparison}).
 
-\section{Models for phone-level multimodal word discovery}
-\subsection{Statistical machine translation models}
-\subsubsection{Mixture model}
-Statistical machine translation optimizes \ref{eq:trans_prob} by learning the probabilities $p(\mathbf{y}|\mathbf{x}, \mathbf{A})$ and $p(\mathbf{A}|\mathbf{x})$. For the phone-level word discovery, following \cite{Brown92}, we can make use of the following assumptions:
+\subsection{Word Discovery with NMT Models}
+Instead of learning $p(\mathbf x|\mathbf y)$, the NMT model tries to learn the posterior probability:
+\begin{align}\label{eq:nmt_trans_prob}
+    p(\mathbf y|\mathbf x) &= \sum_{\mathbf A \in \mathcal A} p(\mathbf A|\mathbf x) p(\mathbf y|\mathbf x, \mathbf A),
+\end{align}
+for each input phone-concept pair, where $\mathcal{A}$ is the set of all alignment matrices that satisfies Eq. (\ref{eq:one-concept-assumption}) but do not necessarily to be binary. 
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig_1.png}
+    \caption{Comparison of various multimodal word discovery systems}
+    \label{fig:model_comparison}
+\end{figure*}
+
+\subsection{Multimodal image retrieval}
+In a standard multimodal image retrieval problem \cite{Karpathy14}, we have a database with image-caption pairs $(\mathbf x^1, \mathbf y^\pi(1)), \ldots, (\mathbf x^S, \mathbf y^{\pi(S)})$, where image $\mathbf y^{\pi(i)}$ is uniquely described by sentence $\mathbf x^i$ and vice versa. The goal is to learn the one-to-one mapping $\pi: \{1, \ldots, S\} \rightarrow \{1, \ldots, S\}$ that maps between the indices of each caption to the corresponding image.
+
+\section{SMT with simplified mixture Models}
+At the first glance, Eq. (\ref{eq:smt_trans_prob}) may seem daunting to learn since it contains the summation of $T_x^{T_y+1}$ terms and can be hard to break down into a reasonable amounts of parameters. However, if each feature frame is assumed to be independently generated by a single concept selected uniformly from the set of image concepts, the expression can be broken nicely into the translation probabilities between single pairs of concepts and acoustic frames/phonetic label. Such a model is referred later as \textit{simplified mixture models}.
+%is simply the likelihood of the audio feature given the image concept and alignment, which can be modeled frame-wise as a mixture distribution. Such a model is referred  as \textit{simplified mixture models}. 
+
+\subsection{Phone-level model}
+ For the phone-level word discovery, following \cite{Brown92}, we can make use of the following assumptions:
 \begin{enumerate}
-    \item $\mathbf{A}$ is integer-valued, specifically $A_{it}=1$ for $i=i(t)$, else $a_{it}=0$. For notational convenience, let $a_t := A_{i(t) t}$; 
-    \item all alignments are equally likely given only $\mathbf{y}$: $p(\mathbf A|\mathbf y) = \frac{\epsilon}{(T_y+1)^{T_x}}$, where $\epsilon$ is some normalization constant;
-    \item given the alignment,
+    \item \textit{Many-to-one assumption}: $\mathbf{A}$ is integer-valued, specifically $A_{it}=1$ for $i=i(t)$, else $a_{it}=0$;
+    \item \textit{Uniform prior assumption}: all alignments are equally likely given only $\mathbf{y}$: $p(\mathbf A|\mathbf y) = \frac{\epsilon}{(T_y+1)^{T_x}}$, where $\epsilon$ is some normalization constant;
+    \item \textit{Mixture assumption}: given the alignment,
 %$\forall y_j, j\neq a_i$ is conditionally independent of $x_i$ and $x_i$'s are independent of $x_j, j\neq i$ given $y_{a_i}$:$p( \mathbf{x}|\mathbf{y}, \mathbf{a}) = \prod_{i=1}^{T_x} p(x_i|x_{1:i-1}, y_{a_i}) = p(x_i|y_{a_i})$.
 each phone depends only on its aligned image concept, thus
 $p(x_t|x_{1:(t-1)},\mathbf{A},\mathbf{y})=p(x_t|y_{i(t)})$,
@@ -526,59 +583,275 @@ Eq. (\ref{eq:smt_trans_prob}) is then simplified to:
 %    \prod_{i=n}^{T_x}p(x_i|y_{a_i}).
     &\frac{\epsilon}{(T_y+1)^{T_x}}\prod_{t=1}^{T_x}\sum_{i(t)=1}^{T_y} p(x_t|y_{i(t)}).
 \end{align}
-Model under such assumptions are called \cite{mixture model} mainly due to the independence between alignments. Optimization with EM results in 
+Model under such assumptions are called \textit{mixture model} mainly due to the independence between alignments. Optimization with EM results in 
 %which can be optimized with EM algorithm and result in
 an iterative formula
-in terms of the expected counts of a given phone-concept pattern.
+in terms of the expected counts of a given phone-concept pattern \cite{Brown93}:
+\begin{align}
+\label{eq:expected_count_ibm1}
+    \langle c(x_t|y_i;\mathbf x, \mathbf y)\rangle = \frac{p(x_t|y_i)}{\sum_{i'=1}^{T_y}p(x_t|y_{i'})}.
+\end{align}
 
 The optimal alignment between the phones and image concepts can be then obtained by finding the highest-scored translation pair of a given sentence:
 \begin{align}\label{eq:smt_alignment}
     i^*(t) = \arg\max_i p(x_t|y_i).
 \end{align}
 
+\subsection{Audio-level model}
+To deal with continuous acoustic features, it is natural to apply
+KMeans-based clustering algorithm and model each image concept $y_i$ as a set of clusters with centroid $\{\mu_{y_i}^m\}_{i=1, m=1}^{T_y, M}$. Intuitively, it is clear that one image concept should be associated with more than one cluster since words in general consists of more than one phone or syllable, and even feature for one phone may require more than one cluster to model due to the variation of the speech production process. Instead of maximizing the likelihood function, the model tries to minimize:
+\begin{align}\label{eq:multimodal_kmeans_obj}
+    \min_{\mathbf A \in \mathcal A, \mathbf m \in [M]^{T_x}} \sum_{t=1}^{T_x} \|x_t - \mu_{m(t)}(y_{i(t)})\|^2_2,
+\end{align}
+the update is similar to the standard KMeans algorithm but guided by the image concepts corresponding to each utterances:
+\begin{align}\label{eq:multimodal_kmeans_update}
+    &i^*(t), m^*(t) = \arg\min_{i, m}\|x_t - \mu_m(y_{i})\|^2\\
+    &\mu_m(y_i) = \frac{1}{|\{t:i(t)=i, m(t)=m\}|}\sum_{t: i(t)=i, m(t)=m} x_t.
+\end{align}
+
 % needed in second column of first page if using \IEEEpubid
 %\IEEEpubidadjcol
 
-\subsubsection{Extensions of mixture model}
+\section{SMT with enriched mixture models}
+\subsection{Phone-level model}
 % IBM 2
-\cite{Brown92} has proposed several extensions to the mixture model. First, they relaxes the second assumption by making the alignment probability time-dependent. Specifically they introduce a set of parameters $a(i|t, T_x, T_y) \approx p(a_{ti} = 1|\mathbf x_{1:t}, \mathbf y_{1:i}, T_x, T_y), i\in \{1,\ldots,T_y\}, t\in \{1,\ldots,T_x\}$ with the constraint that $\sum_{i=1}^{T_y} a(i|t, T_x, T_y) = 1$. As a result:
-\begin{align}\label{eq:align_prob_ibm2}
-    p(A|\mathbf x, \mathbf y)& = \prod_{t=1}^{T_x} a(i(t)|t, T_x, T_y)
+\cite{Brown92} has proposed several extensions to the phone-level simplified mixture model. One extension is to relax the uniform prior assumption by making the alignment probability time-dependent. Specifically they introduce a set of parameters $p(i|t, T_x, T_y) := \mathbf{Pr}[i(t) = i|\mathbf x_{1:t}, \mathbf y_{1:i}, T_x, T_y], i\in \{1,\ldots,T_y\}, t\in \{1,\ldots,T_x\}$ with the constraint that $\sum_{i=0}^{T_y} p(i|t, T_x, T_y) = 1$. This time-dependent alignment is capable of capturing the property that the feature frames aligned to a image concept tend to be in similar order and position as the image concept. As a result, Eq. (\ref{eq:smt_trans_prob}) is modified to be:
+\begin{align}
+    \frac{\epsilon}{(T_y+1)^{T_x}}\prod_{t=1}^{T_x} \sum_{i(t)=0}^{T_y}p(i(t)|t, T_x, T_y) p(x_t|y_{i(t)}),
 \end{align}
-, where $i(t)$ is the index for the aligned concept for feature frame $x_t$. A formula similar to the mixture model can be used to update the parameters. 
+The expected count is then a weighted version of the simplified mixture counterpart:
+\begin{align}
+\label{eq:expected_count_ibm2}
+    \langle c(x_t|y_i; \mathbf x, \mathbf y) \rangle = \frac{p(i|t, T_x, T_y) p(x_t|y_i)}{\sum_{i'=1}^{T_y}p(i'|t, T_x, T_y) p(x_t|y_{i'})}.
+\end{align}
 
 % discuss more about IBM 3, 4, 5 
 
-% HMM model
-\subsubsection{Hidden Markov model}
-An alternative way to relax the second assumption is to add conditional dependence between alignments at each time. This is motivated by several issues with the mixture model. First, when the second assumption holds, the alignments at each time are independent, identically distributed (i.i.d) but this will make the phone sequence of any arbitrary order to have the same probability. For example, the word ``god'' and ``dog'' will have the same probability given an image concept. The position-based alignment probabilities break this limitation but fails to consider that in word discovery, the alignment of ``cat'' stays the same regardless of its position. Another issue is that the independence assumption 3) tends to make the alignment ``fragmental'' since it fails to account for the fact that sequences nearby are more likely to align to the same object. In other words, a better model should take into account the conditional dependence between alignments. For example, we may make the Markov assumption that $p(a_t|\mathbf a_{1:t-1}) = p(a_t|a_{t-1})$ and 
-%Therefore, following \cite{Vogel1996}, we introduce the parameters $\pi(i|T_y) \approx p(\mathbf a_{1, i}=1|T_y)$ and $r(|j-i||T_y) \approx p(\mathbf a_{t,j}=1|\mathbf a_{t-1, i}=1, T_y)$, subject to the constraints that $\sum_{k=1}^{T_y}\pi(k) = 1, \sum_{k=0}^{T_y-1} r(k|T_x, T_y) = 1$, which can be treated as the initial and transition probabilities of a Markov chain. Eq. The model then again tries to maximize (\ref{eq:trans_prob}), which in this case simplifies to:
-\begin{align}\label{eq:align_prob_hmm}
-    p(\mathbf x|\mathbf y, \mathbf A) &= \frac{\epsilon}{(T_y+1)^{T_x}}\prod_{t=0}^{T_x} p(a_{t+1}|a_t) p(x_{t+1}|y_{a_{t+1}}),
+\subsection{Audio-level model}
+ % Continuous IBM model
+The audio-level SMT models is similar to the phone-level mixture model, except a continuous mixture distribution is used to model the common phone-like units associated with each concept. For example, a Gaussian mixture model (GMM) can be used to model each image concept:
+\begin{align}\label{eq:gmm_prob}
+    p(x_t|y_i) = \sum_{m=1}^{M} c_m(y_i) N( x_t|\mu_m(y_j), \Sigma_m(y_j)),
 \end{align}
-where $p(a_1|a_0) := p(a_1)$. This model, as first shown by \cite{Vogel1996}, is a hidden Markov model with alignment vectors as the states. 
+where $\{c_m(y)\}_{i=1}^M$ is the prior distribution for each mixture associated with concept $y_i$. Under the same assumption (1)-(3) as the discrete mixture model, the expected count of the continuous mixture model takes the form:
+%\begin{align}\label{eq:gmm_prob}
+%    p(\mathbf x|\mathbf y, \mathbf A) &= \frac{\epsilon}{(T_y+1)^{T_x}}\prod_{t=1}^{T_x}\sum_{m(t)=1}^{M} c_{m(t)}(y_{i(t)})\nonumber\\
+%    &\mathcal{N}(\mathbf x_t|\mu_{m(t)}(y_{i(t)}), \Sigma_{m(t)}(y_{i(t)})).
+%\end{align}
+% GMM model
+%\begin{align}\label{eq:cont_gmm_em_update}
+%    \hat c_m(i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m)}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)}\\
+%    \hat \mu_m(y_i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m)x_t}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)}\\
+%    \hat \Sigma_m(y_i) &= 
+%    \frac{\sum_{t=1}^{T_x}\gamma_t(i, m)(x_t - \mathbf \mu_m(y_i))(x_t - \mathbf \mu_m(y_i))^\top}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)}.
+%\end{align}
+\begin{align}\label{eq:expected_count_gmm}
+    \langle c(i(t), m(t);\mathbf x, \mathbf y) \rangle &= \frac{c_{m(t)}(y_{i(t)})N(\mathbf x_t|\mu_{m(t)}(y_{i(t)}), \Sigma_{m(t)}(y_{i(t)}))}{\sum_{i'=1}^{T_y} \sum_{m=1}^M c_m(y_{i'})N(\mathbf x_t|\mu_m(y_{i'}), \Sigma_m(y_{i'}))} \\
+    \langle c(x_t|y_i; \mathbf x, \mathbf y) \rangle &= \sum_{m=1}^M \langle c(i, m; \mathbf x, \mathbf y) \rangle.
+\end{align}
 
-Plug Eq. (\ref{eq:align_prob_hmm}) into Eq. (\ref{eq:trans_prob}) and apply standard forward-backward algorithm for HMM \cite{Rabiner89-ATO}, it can be shown that:
-\begin{align}
-\label{eq:dhmm_em_update}
-    \hat p(i) &= \frac{\sum_{t=1}^{T_x}\alpha_t(i)\beta_t(i)}{\sum_{t=1}^{T_x}\sum_{i=1}^{T_y}\alpha_t(i)\beta_t(i)}\\
-    \hat p(j|i) &=  \frac{\sum_{t=1}^{T_x}\alpha_t(i)p(j|i)p(x_{t+1}|y_{a_{t+1}})\beta_t(i)}{\sum_{t=1}^{T_x}\sum_{i=1}^{T_y}\alpha_t(i)p(j|i)p(x_{t+1}|y_{a_{t+1}})\beta_t(j)}\\
-    \hat p(y_i| x_t) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i)}{\sum_{t=1}^{T_x}\sum_{i'=1}^{T_y}\gamma_t(i')},
+EM algorithm for GMM tries to maximize the \textit{Baum auxiliary function}:
+\begin{align}\label{eq:multimodal_gmm_objective}
+&Q(\bar{\Theta}, \Theta) = \sum_{t=1}^{T_x}\sum_{i(t)=0}^{T_y}\sum_{m(t)=1}^M p(i(t), m(t)|\mathbf x, \mathbf y, \bar {\Theta}) \cdot \nonumber\\
+&\log p(x_t, i(t), m(t)| \mathbf y, \Theta)
+%&= \sum_{t=1}^{T_x}\sum_{i(t)=0}^{T_y}\sum_{z_t=1}^M p(i(t), m(t)|\mathbf x_t, \mathbf y, \bar{\Theta}) \nonumber\\
+%&(-\frac{1}{2}\log (2\pi)^d|\Sigma_{m}(y_i)| + 
+%\log c_{m(t)}(y_{i(t)}) - \nonumber \\
+%&\frac{1}{2} (\mathbf{x}_t - \mathbf \mu_{m}(y_{i(t)}))^{\top}\Sigma_m(y_{i(t)})^{-1}(\mathbf{x}_t - \mathbf \mu_{m}(y_{i(t)}))).
 \end{align}
-for all $t \in \{1, \cdots, T_x\}, i, j \in \{1, \cdots, T_y\}$ and all pairs of phonemes and concepts, where $\alpha_t(i) := p(\mathbf x_{1:t}, a_t=i|\mathbf y)$, $\beta_t(i) := p(\mathbf x_{t+1:T_x}| a_t=i)$. $\gamma_t(i) := p(\mathbf x, a_t=i|\mathbf y) = \alpha_t(i) \beta_t(i)$ is the expected count for the alignment at time $t$ to concept $i$. One simplification of the model mentioned in \cite{Vogel1996} is to add the constraint that $p(j|i) = q(j-i)$ since the alignment of the current state depends only on the relative change of aligned position with respect to the previous alignment. For multimodal word discovery, since the order of the concept does not matter, the number of parameters for the transition probability can be further reduced by $p(j|i) = q \delta_{ij} + (1-q)(1-\delta_{ij})$, where $\delta_{ij} = 1$ if $i=j$ and 0 otherwise. In other words, the alignment of the current phone depends only on whether it aligns to the same concept as the previous phone or not. 
+Although not the logarithm of the translation probability as in the discrete case, this auxiliary function is know to provide a lower bound for the log-translation probability and guarantees to converge to a local optimum. The main advantage of using Baum auxiliary objective is that the mixture means and variances now have closed-form expressions in term of the expected count and the acoustic feature frames. The auxiliary function approach will be applicable to all the audio-level SMT models with continuous features in the subsequent sections. More details about the EM update with Baum auxiliary function can be found, for example, in \cite{Bilmes2001}. 
+%Further, similar to the discrete case, the model keeps track of the expected counts $\gamma_t(i, m) := p(i(t)=i, z_t=m|\mathbf x, \mathbf y, \bar \Theta)$ and the mixture priors, means and variance of the GMM are updated as follows: 
+
+In fact, the KMeans-based algorithm in the previous section can be seen as a simplification of the enriched mixture model when the mixture distribution is a Gaussian mixture with diagonal and asymptotically zero covariances for each component. 
+%The continuous HMM model can be similarly derived from the discrete one with an GMM as the emission probability for each image concept. 
+
+
+%\section{Audio-level multimodal word discovery}
+%A next essential step is to model the probability distribution of the acoustic vectors. There are again two alternatives: One is to approximate the density function by a mass function by clustering the acoustic features into discrete units; the other is to learn the continuous distribution directly. The second approach is more theoretically sound and thus will be the focus of this paper. It turns out that the second approach allows a natural extension of both the statistical models \cite{Brown92} and neural models \cite{Bahdanau14} to model problems where the source language is continuous, as in the case of multimodal acoustic word-unit discovery and speech-to-translation.
+
+\section{SMT with segmental models}
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig_2.png}
+    \caption{Framewise model vs. segmental model}
+    \label{fig:frame-segmental-comparison}
+\end{figure*}
+One major bottleneck of performance for mixture models is its independence assumption. The alignments for each feature frames are assumed to be independent and thus the global patterns formed by multiple acoustic feature frames is overlooked. As a result, each feature frames need to  combine enough context of the original speech waveform in order to well represent a word-like unit. However, such an assumption fails to hold for acoustic features like MFCC and even bottleneck features although the latter is known to be good at compressing the contextual information within individual frame. Another problem is that the mixture assumption will make the phone sequence of any arbitrary order to have the same probability. In the phone-level discovery case, the word ``god'' and ``dog'' will have the same probability for two completely different image concepts. One natural approach to capture the multi-frame patterns is to replace the framewise model with an acoustic model that operates at the level of \textit{segment} \cite{Kamper2017}. A segment is defined in this context as a variable-length sequence of consecutive audio feature frames that potentially represent a word or subword unit. This class of models is referred as \textit{segmental models}.   
+
+%Another problem is that the mixture assumption will make the phone sequence of any arbitrary order to have the same probability. In the phone-level discovery case, the word ``god'' and ``dog'' will have the same probability given an image concept; in the audio-level case, things get worse especially when using MFCC as the feature as a single feature frame of two different words may be very similar and too local to discriminate the words. Another issue is that the independence assumption tends to make the alignment ``fragmental'' since it fails to account for the fact that sequences nearby are more likely to align to the same object. In other words, a better model should take into account the conditional dependence between alignments and the fact that speech is more naturally modelled as a sequence of \textit{segments}, which is defined as a variable-length sequence of consecutive audio feature frames that potentially represent a word, rather than simply a sequence of frames. This class of models is referred as \textit{segmental models} \cite{Kamper2016, Kamper2016}. 
+
+\subsection{Phone-level Word Discovery}
+% HMM model
+On the phone-level, since most words do not have more than four syllables the segments can be modeled as the local dependence between alignments. We may replace the uniform prior assumption with the following \textit{Markov assumptions}: $p(i(t)|i(1:t), T_y) =: p(i(t)|i(t-1), T_y)$. Eq. (\ref{eq:trans_prob}) then simplifies to:
+\begin{align}\label{eq:trans_prob_hmm}
+    p(\mathbf x|\mathbf y) &= \frac{\epsilon}{(T_y+1)^{T_x}}\prod_{t=1}^{T_x} \sum_{i(t)=0}^{T_y}p(i(t)|i(t-1), T_y) p(x_{t}|y_{i(t)}),
+\end{align}
+where $p(i(1)|i(0)) = p(i(1))$. This model, as first shown by \cite{Vogel1996}, is a hidden Markov model (HMM) with alignment vectors as the states. Maximizing Eq. (\ref{eq:trans_prob_hmm}) amounts to collect the expected counts:
+\begin{align}\label{eq:expected_counts_dhmm}
+\langle &c(i(t-1), i(t)|\mathbf x, \mathbf y)\rangle
+= \nonumber\\
+&\frac{\alpha_{t-1}(i(t-1))p(i(t)|i(t-1), T_y)p(x_t|y_{i(t)})\beta_{t}(i(t))}{\sum_{i=1}^{T_y}\alpha_{t-1}(i(t-1))p(i|i(t-1), T_y)p(x_t|y_{i})\beta_t(i)}\\
+&\langle c(x_t|y_i; \mathbf x, \mathbf y)\rangle
+= \sum_{i(t-1)=1}^{T_y}\langle c(i(t-1), i| \mathbf x, \mathbf y)\rangle,
+\end{align}
+where $\alpha_t(i) := p(x_{1:t}, i(t)=i|\mathbf y)$ and $\beta_t(i) := p(x_{t+1:T_x}|i(t)=i, \mathbf y)$ can be updated iteratively via dynamic programming.
+
+
+% Therefore, following \cite{Vogel1996}, we introduce the parameters $\pi(i|T_y) \approx p(\mathbf a_{1, i}=1|T_y)$ and $r(|j-i||T_y) \approx p(\mathbf a_{t,j}=1|\mathbf a_{t-1, i}=1, T_y)$, subject to the constraints that $\sum_{k=1}^{T_y}\pi(k) = 1, \sum_{k=0}^{T_y-1} r(k|T_x, T_y) = 1$, which can be treated as the initial and transition probabilities of a Markov chain. Eq. The model then again tries to maximize 
+
+%Plug Eq. (\ref{eq:align_prob_hmm}) into Eq. (\ref{eq:smt_trans_prob}) and apply standard forward-backward algorithm for HMM \cite{Rabiner89-ATO}, it can be shown that:
+%\begin{align}
+%\label{eq:dhmm_em_update}
+%    \hat p(i) &= \frac{\sum_{t=1}^{T_x}\alpha_t(i)\beta_t(i)}{\sum_{t=1}^{T_x}\sum_{i=1}^{T_y}\alpha_t(i)\beta_t(i)}\\
+%    \hat p(j|i, T_y) &=  \frac{\sum_{t=1}^{T_x}\alpha_t(i)p(j|i, T_y)p(x_{t+1}|y_{i(t+1)})\beta_t(i)}{\sum_{t=1}^{T_x}\sum_{i=1}^{T_y}\alpha_t(i)p(j|i, T_y)p(x_{t+1}|y_{i(t+1)})\beta_t(j)}\\
+%    \hat p(x_t|y_i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i)}{\sum_{t=1}^{T_x}\sum_{i'=1}^{T_y}\gamma_t(i')},
+%\end{align}
+%for all $t \in \{1, \cdots, T_x\}, i, j \in \{1, \cdots, T_y\}$ and all pairs of phonemes and concepts, where $\alpha_t(i) := p(\mathbf x_{1:t}, i(t)=i|\mathbf y)$, $\beta_t(i) := p(\mathbf x_{t+1:T_x}| i(t)=i)$. $\gamma_t(i) := p(\mathbf x, i(t)=i|\mathbf y) = \alpha_t(i) \beta_t(i)$ is the expected count for the alignment at time $t$ to concept $i$. One simplification of the model mentioned in \cite{Vogel1996} is to add the constraint that $p(j|i, T_y) = q(j-i|T_y)$ since the alignment of the current state depends only on the relative change of aligned position with respect to the previous alignment. For multimodal word discovery, since the order of the concept does not matter, the number of parameters for the transition probability can be further reduced by $p(j|i, T_y) = q(T_y) \delta_{ij} + (1-q(T_y))(1-\delta_{ij})$, where $\delta_{ij} = 1$ if $i=j$ and 0 otherwise. In other words, the alignment of the current phone depends only on whether it aligns to the same concept as the previous phone or not. 
 
 standard Viterbi decoding can be applied to find the optimal alignment between concept and phone: 
+\begin{align}\label{hmm_alignment}
+    i^*(t) &= \max_{1 \leq i \leq T_y}\{p(\mathbf x_{1:t-1}, i(1:t-1)|\mathbf y) p(i|i(t-1))p(x_t|y_i)\}.
+\end{align}
+For the image retrieval, the translation probability from Eq. (\ref{eq:trans_prob_hmm}) is used to find the optimal set of image concepts:
 \begin{align*}
-    a_t &= \max_{1 \leq i \leq T_y}\{p(\mathbf x_{1:t-1}, \mathbf a_{1:t-1}|\mathbf y) p(i|a_{t-1})p(x_t|y_i)\\
+    \mathbf y^* &= \max_{\mathbf y} p(\mathbf x|\mathbf y) = \max_{\mathbf y} \sum_{i=1}^{T_y}\alpha_{T_x}(i).
 \end{align*}
 
-\subsection{Neural machine translation models}
-Instead of learning $p(\mathbf x|\mathbf y)$, the NMT model tries to learn the posterior probability:
-\begin{align}\label{eq:nmt_trans_prob}
-    p(\mathbf y|\mathbf x) &= \sum_{\mathbf A \in \mathcal A} p(A|\mathbf x) p(\mathbf y|\mathbf x, \mathbf A),
+\subsection{Audio-level Word Discovery}
+While modeling intermediate correlations between alignments may be sufficient for phone-level word discovery, the audio-level feature may require modeling directly on the level of segment. Let $N$ be the number of segments, a \textit{segmentation} is uniquely characterized by the vector $\mathbf s = [s_1, \cdots, s_N]$, where $s_j$ is the starting frame of segment $j$. Assume that the first word starts at the first frame and the last word ends at the last frame, we have $s_1 \equiv 1$, $s_j < s_{j+1}, 1\leq j \leq N$ and $s_{N+1} := T_x+1$. The segmentation can be alternatively represented by a binary \textit{boundary vector} $\mathbf b \in \{0, 1\}^{T_x}$ such that $b_{s_j}=1, j=1,\ldots,N$ and 0 otherwise. Let $\mathcal S_{T_x, N}$ denotes all the segmentation of length N for feature sequence of length $T_x$. By the definition of the segment, all feature frames belonging to the same segment will align to the same image concept. As a result, if the segmentation is known, the alignment matrix $\mathbf A$ can be compressed into a smaller matrix $\tilde{\mathbf{A}} \in \{0, 1\}^{T_y \times N}$, which will be referred to as the \textit{assignment matrix}. the translation probability of the segmental model can be expressed as:
+\begin{align}\label{eq:trans_prob_segmental}
+    p(\mathbf x|\mathbf y) &= \sum_{N=N_{min}}^{N_{max}} \sum_{\mathbf s \in \mathcal S_N} p(\mathbf s|\mathbf y)\sum_{\tilde{\mathbf{A}} \in \{0, 1\}^{T_y \times N}} p(\tilde{\mathbf{A}}| \mathbf s, \mathbf y) p(\mathbf x|\tilde{\mathbf A}, \mathbf s, \mathbf y).
 \end{align}
-for each input phone-concept pair. 
+The expression shows that once the segmentation is fixed, the problem reduces to maximize the likelihood of the segments given the image concept.
 
+Suppose there is a subword-level segmentation $\mathbf s^*$ based on prior knowledge, for instance, the acoustic properties of the syllable units, the problem reduces to maximize:
+\begin{align}\label{eq:trans_prob_preseg_simplified}
+   p(\mathbf x|\mathbf y) \approx p(\mathbf x|\mathbf y, \mathbf s^*). 
+\end{align}
+Consequently, with a similar Markov assumption as in the phone-level word discovery, the translation probability can be broken into probabilities of the subword units:
+\begin{align*}
+    p(\mathbf x|\mathbf y, \mathbf s^*) &= \frac{\epsilon}{(T_y+1)^N}\prod_{j=1}^{N} \sum_{i(j)=0}^{T_y+1}p(i(j)|i(j-1), \mathbf y)\nonumber\\ &p(x_{s_j:s_{j+1}}|y_{i(j)}, m(j))    
+\end{align*}
+which can be modelled using an HMM with a mixture observation density: $p(x_{s_j:s_{j+1}}|y_{i(j)}) = p(m(j)|y_{i(j)}, \mathbf s) p(x_{s_j:s_{j+1}}|y_{i(j)}, m(j))$. The Baum auxiliary function for the segmental model is then:
+\begin{align}\label{eq:baum_subword_hmm}
+    %L(\bar{\Theta}, \Theta) &= \sum_{j=1}^{N}\sum_{i(t-1)=0}^{T_y}\sum_{i(t)=0}^{T_y} p(i(j-1), i(j), m(j)|\mathbf x, \mathbf y, \mathbf s^*) \nonumber\\
+    &Q(\bar{\Theta}, \Theta) = \nonumber\\
+    & \sum_{j=1}^N \mathbb{E}_{\mathbf i, \mathbf m}[\log p(x_{s_j^*:s_{j+1}^*}, i(j), m(j)|i(j-1), y_{i(j)}, \Theta)|\mathbf x, \mathbf y, \bar{\Theta}].
+\end{align}
+The challenge here is that the segments are variable in lengths and $p(x_{s_j:s_{j+1}}|y_{i(j)})$ can not be directly modelled with a fixed dimensional density function. Besides modeling each segment using HMM \cite{Lee2012}, one existing approach \cite{Kamper2017} is to embed each segment into a fixed-dimensional space as \textit{embedding vector} so the embedding vector can be modelled with a fixed dimensional density function. Denote the embedded $j$-th segment as $\tilde{x}_j = f_e(x_{s_{j-1}:s_j}), s_0:=1$ and $\tilde{\mathbf x} := [\tilde{x}_1, \cdots, \tilde{x}_N]$, the assumption amounts to $p(x_{s_j:s_{j+1}}|y_{i(j)}) p(\tilde{x}_j|y_{i(j)})^{s_{j+1}-s_j}, p(\tilde{x}_j|y_{i(j)}) = \sum_{m=1}^M c_m(y_{i(j)})\mathcal N(\tilde{x}_j|\mu_m(y_{i(j)}), \Sigma_m(y_{i(j)}))$. A special case of such embedding assumption is that most spoken words are distinguisable by the ear even after they are properly scaled to the same size. Therefore, the embedding vector can simply be the resampled version of the segments. While duration carries information in many languages and the embedded segment may suffered from loss of high-frequency information when the downsampling rate is too high, embedding segments to fixed length greatly reduces the complexity of the model. This model is referred later as the \textit{static segmental HMM}.
+
+Suppose $\mathbf s^*$ is instead a word-level pre-segmentation and the pseudo-word segments satisfy the following \textit{segmental mixture assumption}: Given the assignment, each segment depends only on its aligned image concept, thus $p(\mathbf x_{s_j:s_{j+1}-1}|\mathbf x^{-}, \tilde{\mathbf{A}}, \mathbf s, \mathbf y) = p(\tilde{\mathbf x}_j|\mathbf y_{i(s_j)})$, where $\mathbf x^-$ denotes the segments other than $j$. Combined with the embedding vector approach, a simplified or enriched mixture model can be used to model the segments.
+
+The approaches above fixed the noisy word boundaries through the clustering process and its performance is then constrained by the quality of the pre-segmentation. It is more appealing to jointly refine the segmentation and clusters during training \cite{Kamper2017}. Suppose given the segmentation, the utterance can be modeled by an enriched mixture model, then the Baum auxiliary function is:
+\begin{align}\label{baum-besgmm}
+    Q(\bar{\Theta}, \Theta) &= \sum_{N=N_{min}}^{N_{max}}\sum_{\mathbf s \in \mathcal S^N}p(\mathbf s|\mathbf x, \mathbf y, \bar{\Theta})\nonumber\\
+    &\mathbb{E}_{\mathbf i, \mathbf m}\left[\log p(\mathbf x, \mathbf s, \mathbf i, \mathbf m|\mathbf y, \mathbf \Theta)|\mathbf x, \mathbf y, \mathbf s , \bar{\Theta}\right].
+    %p(i(j), m(j)|\mathbf x, \mathbf y, \mathbf s, \bar{\Theta})\nonumber\\
+    %&\mathbb{E}_{\mathbf s}\left[\sum_{j=1}^N\log p(\tilde{\mathbf{x}}, \mathbf s, \tilde{\mathbf A}|\mathbf y, \Theta)|\mathbf x, \mathbf y, \mathbf s, \bar{\Theta}\right].
+\end{align}
+One key challenge of this approach is to model the distribution of the segmentation $p(\mathbf s|\mathbf x, \mathbf y)$ and $p(\mathbf s|\mathbf y)$. Similar to the prior probabilities of alignments, the summation over the priors and posteriors of segmentation in Eq. (\ref{eq:trans_prob_segmental}) and Eq. (\ref{eq:baum_segmental}) respectively has $(N_{max}-N_{min})\left(\begin{array}{c}
+      T_x\\
+     N-1
+\end{array}\right)$ terms and requires an prohibitive amount of parameters. Suppose $p(\mathbf s|\mathbf x, \mathbf y)$ and $p(\mathbf s|\mathbf y)$ are known, we can approximate the sums by its unbiased sampled version:
+\begin{align}\label{eq:baum-besgmm-sampled}
+    p(\mathbf x|\mathbf y) &\approx p(\mathbf x|\mathbf y, \mathbf s')\\
+    Q(\bar{\Theta}, \Theta) &\approx \mathbb{E}_{\mathbf s}\left[\log p(\tilde{\mathbf x}, \mathbf s'')|\mathbf y|\mathbf x, \mathbf y, \mathbf s'', \bar{\Theta}\right],
+\end{align}
+where $\mathbf s' \sim p(\mathbf s|\mathbf y), \mathbf s'' \sim p(\mathbf s|\mathbf x, \mathbf y)$. Notice that this expressions are the same as those of the models with fixed segmentation, except the segmentations are now drawn randomly rather than deterministically.
+
+To model $p(\mathbf s|\mathbf x, \mathbf y)$ and $p(\mathbf s|\mathbf y)$, One approach 
+ is to use \textit{adaptor grammar}\cite{Johnson2007, Lee2012}, which assumes the segmentation boundary vector $\mathbf{b}$ to be a sequence of i.i.d Bernoulli random variables with parameter $\alpha_b$. $\alpha_b$ is assumed to be generated by a symmetric Dirichlet process to encourage sparsity of the boundary vector. During inference, the boundary vector and Bernoulli parameter can be sampled efficiently using a collapsed Gibbs sampler. Once the boundary vector is fixed, each segment can be modelled separately. The second approach is employed by the BES-GMM system \cite{Kamper2017} and assumes each segmentation $s_j$ to be uniformly distributed between $[0, s_{j+1}]$. Under this assumption and the segmental mixture assumption, $\mathbf s$ can be sampled backward from the posterior $p(\mathbf s|\mathbf x, \mathbf y)$:
+ \begin{align*}
+     s_j &\sim p(s_j|\mathbf s_{-j}, \mathbf x, \mathbf y)\\
+     &\propto p(s_j, s_{j+1}, \mathbf x_{1:s_{j+1}}|\mathbf y)\\
+     &\propto p(\mathbf x_{1:s_{j+1}}|s_j, s_{j+1}, \mathbf y) p(|\mathbf y)\\
+     &\propto p(\mathbf x_{1:s_{j}}|\mathbf y) p(\tilde{x}_j|\mathbf y)^{(s_{j+1}-s_j)},
+ \end{align*}
+ where the second $\propto$ uses the uniform assumption of $s_j$. $p(\mathbf x_{1:s_{j}}|\mathbf y)$ can be computed recursively with dynamic programming. Optimizing Eq. (\ref{eq:baum-besgmm-sampled}) with EM algorithm results in a formula in terms of the following expected count:
+ \begin{align}\label{eq:expected_counts_besgmm}
+     &\langle c(i(j), m(j);\mathbf s, \mathbf x, \mathbf y)\rangle\\
+     &= \frac{(c_{m(j)}(y_{i(j)})\mathcal N(\tilde{x}_j|\mu_{m(j)}(y_{i(j)}), \Sigma_{m(j)}(y_{i(j)})))^{s_{j+1}-s_j}}{\sum_{i=0}^{T_y}\sum_{m=1}^M (c_{m}(y_{i})\mathcal N(\tilde{x}_j|\mu_{m}(y_{i}), \Sigma_{m}(y_{i})))^{s_{j+1}-s_j}}.
+ \end{align}
+ 
+ The model infers the optimal segmentation and alignment using Viterbi decoding:
+\begin{align}\label{eq:decode_besgmm}
+    s_j^*, i^*(j) &= \max_{s_j, i}\{p(\mathbf x_{1:s_j}|y_{i})p(\tilde{x}_j|y_{i})^{s_{j+1}-s_j}\},
+\end{align}
+where similar to the sampling step, the $p(\mathbf x_{1:s_j}|y_{i})$ is evaluated forward from $s_j=1$ while the optimization starts from backward from $s_{j+1}=T_x+1$. This model is based on BES-GMM \cite{Kamper2017} with additional image concepts input and referred later as dynamic segmental model. When the segmentation is fixed during training, the model is referred as static segmental GMM. \cite{Kamper2017} also proposes a simplified version of the BES -GMM called ES-KMeans, which can be naturally adapted to the multimodal setting to optimize:
+\begin{align}\label{eq:objective_multimodal_eskmeans}
+    \min_{\mathbf s, \mathbf A, \mathbf m}\sum_{j=1}^{N}(s_j-s_{j-1})\|v_j - \mu_{m(j)}(y_i(j))\|_2^2.
+\end{align}
+This simplified model is referred later as simplified dynamic segmental model.
+ %\begin{align}\label{eq:segmm_sample_segment}
+ %   l(t) &\sim p(l(t)|\mathbf{x}, \mathbf{y})\\
+ %   &\propto p(\mathbf{x}, l(t)|\mathbf{y})\\
+ %   &\propto p(\mathbf{x}_{1:t}, l(t)|\mathbf {y})\\
+ %   &\propto \bar{\alpha}_t p(\mathbf{x}_{t-l(t)+1:t}|\mathbf y)\\
+ %   &= \bar{\alpha}_t p(f_e(\mathbf{x}_{t-l(t)+1:t})|\mathbf y)^{l(t)},
+%\end{align}
+%where $\bar{\alpha}_t$ can be calculated recursively and $p(f_e(\mathbf{x}_{t-l(t)+1:t}|\mathbf y) = \sum_{i=1}^{T_y}\sum_{m=1}^{M}p(f_e(\mathbf{x}_{t-l(t)+1:t}, i, m|\mathbf y) \propto \sum_{i=1}^{T_y}\sum_{m=1}^{M}c_m(y_i)\mathcal N(f_e(\mathbf{x}_{t-l(t)+1:t})|\mu_m(y_i), \Sigma_m(y_i))$. 
+
+ %Gibbs sampling  approximates Eq. (\ref{eq:baum-besgmm}):
+%\begin{align}\label{eq:trans_prob_segmental_sampled}
+%     p(i(t)|\mathbf y, \mathbf x) = \mathbb E_{\mathbf s \sim p(\mathbf s|\mathbf x, \mathbf y))}[p(i(t)|\mathbf x, \mathbf y, \mathbf s)]\\
+%     \approx p(i(t)|\mathbf x, \mathbf y, \bar{\mathbf s}).
+%\end{align} 
+
+
+%One approach proposed by \cite{Kamper2017} is to assume that the segmentation to be equally likely. Define $\mathbf b \in \{0, 1\}^{T_x}$ to be the \textit{boundary vector} such that $b_{s_j}=1, j=1,\ldots,N$ and 0 otherwise. Then then in their model, $p(b_t|\mathbf y) = \frac{1}{2}$ and $p(\mathbf s|\mathbf y)=p(\mathbf b|\mathbf y) = \frac{1}{2^{T_x}}$. \cite{Lee2012} makes a more general assumption that $p(b_t=1|\mathbf y) = \alpha_b$ and $p(\mathbf s|\mathbf y)=p(\mathbf b|\mathbf y) = \frac{1}{\prod_{t=1}^{T_x}\alpha_b^{b_t}(1-\alpha_b)^{1-b_t}}$. As a result, the number of segments per sentence will obey a binomial distribution with $(T_x, \alpha_b)$. 
+
+%With the additional information from the image concepts, the above expression for number of segments can be generalized by having $\alpha_b$ depending on the number of concepts. Intuitively, when there are more concepts, there should be more segments and $\alpha_b$ should be larger. For example, we can let $\alpha_b(T_y, T_x) = \frac{\alpha T_y}{T_x}$ for some constant $\alpha$ such that $\alpha T_y \leq T_x$ and
+%\begin{align}\label{eq:concept_dependent_n_segment}
+%    p(N|\mathbf y) = \text{Binomial}(N; T_x, \frac{\alpha T_y}{T_x}),
+%\end{align}
+%where $\text{Binomial}(m;n, p) := \left(\begin{array}{c}
+%     n  \\
+%     m 
+%\end{array}\right)p^m(1-p)^{n-m}$. It is also possible to make $\alpha_b$ concept dependent, similar to the fertility approach used in \cite{Brown93}, but it will requires more parameters. Besides, the support of the prior can be further shrunk by restricting the length of a single segment with prior knowledge about the range of word length, though this will make the approach language-dependent. 
+
+%Plug Eq. (\ref{eq:concept_dependent_n_segment}), the conditional independence assumption into Eq. (\ref{eq:audio_trans_prob}) yields:
+%\begin{align}\label{eq:audio_trans_prob_simplified}
+%    &\sum_{N=0}^{2\alpha \frac{T_y}{T_x}}\sum_{\mathbf s \in \mathcal S_N}\alpha(T_y, T_x)^N (1-\alpha(T_y, T_x))^{T_x-N}\nonumber\\
+%    &\frac{\epsilon}{(T_y+1)^{T_x}}\prod_{j=1}^{N}\sum_{i(s_j)=1}^{T_y}p(\mathbf x_{s_j:s_{j+1}-1}|y_{i(s_j)}).
+%\end{align}
+
+%The modeling problem then boils down to model the segment probabilities $p(\mathbf x_{s_j:s_{j+1}-1}|y_{i(s_j)})$. while a single phone occupies only one frame in the phone-level discovery, audio segment for the same phone/word may occupy variable frames. Besides modeling each segment using HMM \cite{Lee2012}, one existing approach \cite{Kamper2017} is to embed each segment into a fixed-dimensional space, so problem reduces to the phone-level discovery. Let the \textit{embedding vector} of the $j$-th segment be $v_j = f_e(x_{s_{j-1}:s_j}), s_0:=1$.
+
+%Suppose the segmentation is known, Eq. (\ref{eq:smt_trans_prob}) becomes:
+%\begin{align}\label{eq:segmental_smt_trans_prob}
+%    p(\mathbf{x}, \mathbf{s}|\mathbf{y}, \tilde{\mathbf{A}})
+%    &= \sum_{\tilde{\mathbf A}} p(\mathbf{v}|\mathbf {y}, \tilde{\mathbf A})\\
+%    &=\prod_{j=1}^N p(v_j|y_{i(j)}),
+%\end{align}
+%where $\tilde A \in \{0, 1\}^{N \times T_y}$ is simply the alignment matrix $A$ with rows that corresponds to the same segment collapse into a single row. which essentially reduces to the discrete case.
+
+%However, in order to optimize Eq. (\ref{eq:trans_prob_segmental}) or even the Baum auxiliary function, marginalizing over all possible segmentations is required when calculating the posterior of the alignment given the features and the image concepts, $p(i(t)|\mathbf x, \mathbf y), t=1,\cdots, T_x$. One way to get around is to use Gibbs sampling by constructing an unbiased estimator of Eq. (\ref{eq:audio_trans_prob}):
+%\begin{align}\label{eq:audio_trans_prob_sampled}
+%     p(i(t)|\mathbf y, \mathbf x) = \mathbb E_{\mathbf s \sim p(\mathbf s|\mathbf x, \mathbf y))}[p(i(t)|\mathbf x, \mathbf y, \mathbf s)]\\
+%     \approx p(i(t)|\mathbf x, \mathbf y, \bar{\mathbf s}),
+%\end{align}
+%where $\bar{\mathbf{s}} \sim p(\bar{\mathbf{s}}=\cdot |\mathbf x, \mathbf y))$.
+
+%Following \cite{Kamper2017}, we randomly sample a segmentation according to the distribution $p(\mathbf s|\mathbf x, \mathbf y)$ using a collapsed Gibbs sampler: Let $\bar{\alpha}_t := \sum_{i=1}^{T_y}\alpha_t(i)$, where $\alpha_t(i)$ is the forward variable defined similarly to the phone-level case as $p(\mathbf{x}_{1:t}, i(t)=i|\mathbf{y})$, and let $l(t)$ denotes the length of the candidate segment that ends at time t, then the segmentation can be segmented backward from $t=T_x$ as:
+%Let $\gamma_t(i, m|\mathbf s) = p(i(t)|\mathbf x, \mathbf y, \mathbf s)$, the parameters of the GMM as:
+%\begin{align}\label{eq:segmm_em_update}
+%    \hat c_m(i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m|\mathbf s)}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m|\mathbf s)}\\
+%    \hat \mu_m(y_i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m|\mathbf s)f_e(x_{s_{i}:s_{i+1}-1})}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m|\mathbf s)}\\
+%    \hat \Sigma_m(y_i) &= 
+%    \frac{\sum_{t=1}^{T_x}\gamma_t(i, m|\mathbf s)}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m|\mathbf s)}\\
+%    &(f_e(\mathbf x_{s_{i-1}+1:s_{i}}) - \mathbf \mu_m(y_i))(f_e(\mathbf x_{s_i:s_{i+1}-1}) - \mathbf \mu_m(y_i))^\top.
+%\end{align}
+
+% Discuss the use of Dirichlet prior for image concepts
+
+%Existing works on acoustic word discovery has modeled variable-length context by explicitly modeling the segmentation in the generative process. However, since the word segmentation is generally assumed to be not directly observable in the acoustic feature, certain prior assumption about the word length distribution is often used. \cite{Lee2012} models the length probability as:
+%\begin{align}\label{eq:len_prob_seg_hmm}
+%    p(l_i=l|\mathbf z_i, l_1^{i-1}) = &\frac{(1 - \alpha_{z_i})^l \alpha_i}{\sum_{l'=1}^{T_x - \sum_{i'=1}^{i-1}l_{i'}}(1 - \alpha_i)^l \alpha_i},\\
+%    1\leq l \leq T_x - \sum_{i'=1}^{i-1}l_{i'},
+%\end{align}
+%which is simply the length distribution of $i-th$ segment starting with $1$ and continuing with $0$ of a binary string generated by $i.i.d$ Bernoulli random variables with parameter $\alpha_{z_i}$. 
+
+\section{NMT models}
 Suppose the several assumptions are satisfied:
 \begin{enumerate}
     \item There is a ``dominant'' alignment $\mathbf A^*$ such that $p(\mathbf A^*|\mathbf x) \approx 1$;
@@ -602,188 +875,206 @@ where $\mathbf e(\cdot)$ can be learned by a feedforward neural network and $\ma
 \begin{align}\label{eq:def_context_vec}
     \mathbf c_i = \sum_{t=1}^{T_x} \alpha_{it}^* \mathbf h_t.
 \end{align}
-The assumption (3) of this section can be viewed as a soft version of the SMT assumption (3) in the previous section:  in the SMT model, concept $y_i$ depends only on the phones that align to it, which is equivalent to the special case when $\alpha_{it}^*$ in Eq.\label{eq:def_context_vec} is either 0 or 1. Therefore, the set of probabilities $\{p(y_i|y_{i-1}, \mathbf s_{i-1}, \mathbf c_i)\}_{i=1}^{T_y}$ can be learned using a recurrent neural net $f$ with state vector $s_i$. The problem then boils down to learning the functions $h, e, f$ such that the log-likelihood of the concepts given the phone sequence is maximized.
+The assumption (3) of this section can be viewed as a soft version of the SMT assumption (3) in the previous section:  in the SMT model, concept $y_i$ depends only on the phones that align to it, which is equivalent to the special case when $\alpha_{it}^*$ in Eq. (\ref{eq:def_context_vec}) is either 0 or 1. Therefore, the set of probabilities $\{p(y_i|y_{i-1}, \mathbf s_{i-1}, \mathbf c_i)\}_{i=1}^{T_y}$ can be learned using a recurrent neural net $f$ with state vector $s_i$. The problem then boils down to learning the functions $h, e, f$ such that the log-likelihood of the concepts given the phone sequence is maximized.
 
-For the multimodal word discovery model, special modification can be made on the attention mechanism. One way is to notice that since the order of the image concepts do not matter, the recurrent connection can simply be removed and the 
+%For the multimodal word discovery model, special modification can be made on the attention mechanism. One way is to notice that since the order of the image concepts do not matter, the recurrent connection can simply be removed and the 
 % Talk about the modification on the standard encoder-decoder framework
 
-\section{Audio-level multimodal word discovery}
-In the audio level, instead of phone sequence, we are given a sequence of acoustic feature vectors $\{\mathbf x_t\}_{t=1}^{T_x}$.  
-% Linear Gaussian model for bottleneck features
-Since features such as spectrogram or cochleagram tend to be high-dimensional, one essential step is to compress the audio features into lower dimensional space. Two main alternatives exist: one way is to employ knowledge in speech science to find a data-independent subspace, such as the mel-frequency subspace used in the MFCC (cite needed) and its variants; another way is to find a data-dependent subspace using statistical models such as linear Gaussian models (cite needed) or neural networks (cite needed). The second approach is generally known as the \textit{bottleneck features}. The two approach can often be combined by, for example, extracting bottleneck features from MFCC.
+\section{Experiments}
+\subsection{Datasets}
+Our dataset consists of 7996 images that are present in the Flickr8k and Flickr30k corpus. We choose to use Flickr8k primary because it contains phrases that describe particular regions of the image, for instance, ``a girl in a pink dress''. The phrase-level segmentation is used as our gold alignment. We only used images that appeared in the Flickr8k dataset so that we can compare our results to the speech-to-image \cite{Harwath15} and text-to-image \cite{Karpathy15} system. In order to make sure that we used the same dataset as in \cite{Karpathy15, Harwath15}, we divided the data into training set (6996 images) and test set (the same 1000 images used in \cite{Karpathy15, Harwath15}).  We use Flickr30kEntities to extract image concepts from the phrase-level descriptions and merged similar entities using WordNet (cite needed) synsets. By considering captions in which every concepts appear at least 10 times, we are able to find a list of 1547 concepts. Repeated concepts in a sentence are merged to maintain the many-to-one mapping between the phone sequence and the image concepts. To generate the phone sequence for the caption, we used CMU dictionary  which consists of 39 distinct phone labels and 69 tokens in total with the stress symbols. Words such as compound words like ``skateboarder'' does not have an entry in the dictionary, we simply replaced it with an \texttt{UNK} symbol. For audio-level discovery, we used audio from Flickr-audio dataset \cite{Harwath15}, which are spoken captions for Flikcr8k collected on Amazon Mechanical Turk. We extract the MFCC feature as in \cite{Rasanen2015, Kamper2016} with 12 cepstral coefficients, 25 ms window and 10 ms overlaps, and normalize it across speakers with cepstral mean variance normalization (CMVN). Another acoustic feature we use is the multilingual bottleneck feature from the BUT project  trained on 20 different languages \cite{Fer2017}. Features longer than 2000 frames are truncated. Using word-level forced alignment by an ASR system (cite needed), we are able to convert the phone-level gold alignment to the alignment of acoustic feature frames. Many of the audio are corrupted and did not have a forced alignments, so we filter them out from our dataset and leave with 6610 images. 
+ 
+\subsection{Evaluation metrics}
+% Accuracy, Recall, Precision, F-score
+For word-discovery task, we evaluate our systems by comparing the predicted and gold alignments. The \textit{accuracy} is defined as the percentage of phones that align to the correct image concept. To visualize the effects between true positive rate and false positive rate, we plot the receiver operating characteristic (ROC) using the alignment probabilities for SMT and normalized attention weights for NMT. The ROC are defined by treating the word discovery as a retrieval problem, where every image concept is a query and every phone/acoustic feature frame as document. In addition, we use the \textit{recall}, \textit{precision} and \textit{F-score}. Since our dataset is not balanced, the retrieval-based metrics help us to fairly evaluate our systems. For the speech-to-image retrieval task, we follow \cite{Harwath15, Karpathy15} to use recall@1, 5, 10 to measure the performance of our system. We assume a one-to-one mappings between image and caption, despite having a large number of image-caption pairs with similar concepts.      
 
-A next essential step is to model the probability distribution of the acoustic vectors. There are again two alternatives: One is to approximate the density function by a mass function by clustering the acoustic features into discrete units; the other is to learn the continuous distribution directly. The second approach is more theoretically sound and thus will be the focus of this paper. It turns out that the second approach allows a natural extension of both the statistical models \cite{Brown92} and neural models \cite{Bahdanau14} to model problems where the source language is continuous, as in the case of multimodal acoustic word-unit discovery and speech-to-translation.
+\subsection{Model parameters}
+% Phone-level parameters
+% SMT
+The main parameters of the phone-level SMT is the translation probabilities and alignment probabilities. We run the simplified mixture model until convergence and the enriched and segmental model for 50 iterations. We initialize $p(x_t|y_i)$ by adding one to the numerator when phone $x_t$ and $y_i$ co-occur in a sentence. For segmental model, we initialize alignment transition matrix with a uniform distribution for each row. 
+%Further, we found an empirical improvement on F1 score and accuracy for the segmental model when the translation probability is updated via:
+%\begin{align*}
+%    \hat{p}(x_t|y_i) = \frac{\sum_{t=1}^{T_x}\gamma_t(i)p(x_t|y_i)}{\sum_{t=1}^{T_x}\sum_{i'=1}^{T_y}\gamma_t(i')p(x_t|y_i)},
+%\end{align*}
+%rather than the correct formula in Eq. (\ref{eq:dhmm_em_update}). 
+%This modified formula turns out to generate alignments somewhere in between the mixture model and the segmental model, thus avoiding many false discoveries suffered by the segmental model. The word discovery result is reported with this modification. But we sticked to the original model for the attention plot and retrieval results. % A more theoretically sound modification of the NULL probability can be found in \cite{Toutanova2002}.
 
-\subsection{Acoustic feature extraction}
-the continuous features into phone-like symbols and apply the discrete models to the discretized sequence. To account for richer context, bottleneck features extracted from existing phone classification system or multilingual ASR system can be used (cite needed). 
+% NMT (including decoding)
+For the NMT system, we used a 512-dimensional embedding layer followed by a single layer bidirectional LSTM with 512 hidden nodes as the encoder and another single layer LSTM with 512 hidden nodes as decoder. % Confirm needed for the type of initialization
+%For the decoding, we rescale the attention weights by its prior probability, which approximately converts the posterior probability to the likelihood, provided the observation has uniform prior: 
+%$$
+%\frac{p(y_i|x_t)}{p(y_i)} \propto \frac{p(y_i|x_t)p(x_t)}{p(y_i)} = p(x_t|y_i)
+%$$. 
 
-The classical bottleneck feature can be viewed as the following Gaussian process:
-\begin{align}\label{eq:bnf_gp}
-    \mathbf z &\sim \mathcal N(0, \mathbf I)\\
-    \mathbf w &\sim \mathcal N(0, \mathbf \Sigma)\\
-    \mathbf x &= \mathbf C \mathbf z + \mathbf w,
-\end{align}
-where $\mathbf C \in \reals^{D \times B}$, and $B < D$ is the dimension of the bottleneck feature. The objective is to find $(\mathbf C, \mathbf\epsilon)$ such that $p(\mathbf x|\mathbf C, \epsilon)$ is optimized. Use the Baum-Welch auxiliary function:
-\begin{align}\label{eq:lg_bnf_objective}
-    &\max_{\bC, \epsilon} \mathbb E[\log p(\bx|\bz, \bC, \epsilon)|\bx, \bar\bC, \bar\epsilon]\\
-    =&\max_{\bC, \Sigma}\mathbb E[-\frac{1}{2}\log (2\pi)^{B}|\Sigma| - \frac{1}{2}(\bx - \bC\bz) \Sigma^{-1}(\bx - \bC\bz)|\mathbf x, \bar\Theta].
-\end{align}
-As a result, the parameters of following iterative update:
-\begin{align}
-    \hat{\bC} &= x \mu_{\bz|\bx}^\top(\Sigma_{\bz|\bx} + \mu_{\bz|\bx}\mu_{\bz|\bx})^{-1}\\
-    \hat{\Sigma} &= \mathbf E[(\bx - \bC \bz)(\bx - \bC \bz)^\top|\bx, \bar\Theta]\\
-    &= \bx \bx^\top - \bC \mu_{z|x} \bx^\top,
-\end{align}
-where $\mu_{z|x} := \bC^\top(\bC^\bC^\top + \Sigma)^{-1} \bx, \Sigma_{\bz|\bx} = \bI - \bC^\top(\bC^\bC^\top + \Sigma)^{-1}\bC$. The bottleneck feature is then:
-\begin{align}\label{eq:lg_bnf}
-    f_{bnf}(x) = \mu_{z|x} = \bC^\top(\bC^\bC^\top + \Sigma)^{-1} x.
-\end{align}
+% Audio-level parameters
+For audio-level simplified mixture model, the main hyperparameter is the number of mixtures per concept $M$ and the dimension of the acoustic embedding. We found that $M=5$ produces the best results and any value larger than 5 leads to many empty clusters. For the enriched mixture model, the covariance matrices become singular as the posterior of certain mixture becomes too small, so we simply fix it to be $0.002$ for the framewise approach and $2$ for the pre-segmental approach, based on the increase of log-likelihood during training. Both models are initialized with randomly generated clusters and assignments. For the segmental model, we used $M=1$ for computational efficiency and initialized the cluster randomly. For the embedding dimension, we experimented with 10 and 20 equally spaced frames and found only marginal improvement when using 20 equally spaced frames  with proper resampling or interpolation, so we follow \cite{Kamper2017} to concatenate 10 equally spaced frames. 
+Again following \cite{Kamper2016}, we pre-segmented the audio to syllable-level using the unsupervised syllable-segmentation system by \cite{Rasanen2015} and only consider the boundaries detected by the system during the segment step. This limits the performance of our system to the coverage of their system, but significantly reduces the disk space for storing the embeddings and inference time. To ensure a better coverage of the true word boundaries, we combine the landmarks detected by all three syllable segmentation algorithms (Oscillator, EnvMin, VSeg) \cite{Rasanen2015} and remove boundaries that are within 20 ms from each other. This results in a coverage of about $83.5 \%$ of all the word boundaries to be within 30 ms. Due to run time constraint, we experiment mainly with the ES-Kmeans based segmental system and leaves the comparison with BES-GMM for future work. From our initial experiments, the word segmentation results of the two models are very similar.
+% What is the exact coverage of the system?
 
-\subsection{SMT models}
- % Continuous IBM model
-\subsubsection{Framewise Approach}
-The audio-level SMT models replace the discrete translation probabilities $p(x_t|y_j)$ with probability density functions (PDF). Intuitively, it is clear that a desirable PDF should contain more than one ``peak'' density value since most words contain more than one phone or syllable; even the acoustic feature for word with a single syllable may contain more than one peak due to the variation of the speech production process. Notice that we largely ignored the speaker variation in the subsequent discussion and assumed proper speaker adaptation has been applied before the processing of our models.
+\subsection{Results}
+\subsubsection{Phone-level discovery}
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+\hline
+        & \begin{tabular}{@{}c@{}}
+     Simplified \\
+     Mixture
+\end{tabular} & \begin{tabular}{@{}c@{}}
+     Enriched \\
+     Mixture
+\end{tabular} & \begin{tabular}{@{}c@{}}
+     Segmental\\
+     (HMM)
+\end{tabular} & NMT \\
+        \hline
+Accuracy & 43.8 &   40.0    & 56.2  & 41.5\\
+Recall  & 52.9   &  46.9 & 64.9 & 29.2\\
+Precision   & 46.7  & 41.4  & 60.0  & 33.0  \\
+F1  & 49.6  & 44.0  & 62.3  & 31.2  \\
+\hline
+\end{tabular}
+    \caption{Phone-level Word Discovery Results}
+    \label{tab:phone_level_result}
+\end{table}
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig_3.png}
+    \caption{ROC for phone-level models. Top-left: the simplified mixture model; top-right: the enriched mixture model; bottom-left: the segmenal model; bottom-right: NMT}
+    \label{fig:roc_phn}
+\end{figure*}
 
-Therefore, one desirable choice is to use a Gaussian mixture distribution for each image concept: 
-\begin{align}\label{eq:gmm_prob}
-    f(x_t|y_j) = \sum_{i=1}^{M} c_i(y_j) N(x_t|\mu_{y_j}, \Sigma_{y_j}),
-\end{align}
-where $\{c_i(j)\}_{i=1}^M$ is a prior probability distribution for each clusters associated with concept $y_j$ with $\sum_{i=1}^M c_i(j) = 1, \forall j \in \{1, \cdots, T_y\}$ and $N(x_t|\mu_{y_j}, \Sigma_{y_j}) := \frac{1}{((2\pi)^d |\Sigma_{y_j}|)^{1/2}}\exp\left(-\frac{1}{2}(\mathbf x_t - \mathbf \mu_{y_j})^\top\Sigma_{y_j}^{-1}(\mathbf x_t - \mathbf \mu_{y_j})\right)$. Under the same assumption (1)-(3) as the discrete mixture model, the continuous model seeks to maximize the \textit{Baum-Welch auxiliary function}:
-\begin{align}\label{multimodal_gmm_objective}
-&L(\bar{\Theta}, \Theta) = \sum_{t=1}^{T_x}\sum_{a_t=1}^{T_y}\sum_{z_t=1}^M p(a_t,z_t|\mathbf x_t, \mathbf y, \bar {\Theta}) \log f(\mathbf x_t, a_t | \mathbf y, \Theta)\\
-&= \sum_{t=1}^{T_x}\sum_{a_t=1}^{T_y}\sum_{z_t=1}^M p(a_t, z_t|\mathbf x_t, \mathbf y, \bar{\Theta})(-\frac{1}{2}\log (2\pi)^d|\Sigma_{y_i}(m)| + \nonumber\\
-&\log c_{z_t}(y_i) - \frac{1}{2} (\mathbf{x}_t - \mathbf \mu_{y_j}(m))^{\top}\Sigma_{y_j}(m)^{-1}(\mathbf{x}_t - \mathbf \mu_{y_j}(m))).
-\end{align}
-Although not the logarithm of the translation probability as in the discrete case, this auxiliary function is know to provide a lower bound for the log-translation probability and guarantees to converge to a local optimum. Further, similar to the discrete case, the model keeps track of the expected counts $\gamma_t(i, m) := p(a_t=i, z_t=m|\mathbf x, \mathbf y, \bar \Theta)$ and the mixture priors, means and variance of the GMM are updated as follows: 
-% Continuous HMM model
-\begin{align}\label{eq:cont_gmm_em_update}
-    \hat c_m(i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m)}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)}\\
-    \hat \mu_m(i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m)x_t}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)}\\
-    \hat \Sigma_m(i) &= 
-    \frac{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)(\mathbf x_t - \mathbf \mu_t)(\mathbf x_t - \mathbf \mu_t)^\top}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m)}.
-\end{align}
-The continuous HMM model can be similarly derived from the discrete one with an GMM as the emission probability for each image concept. 
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig_4.png}
+    \caption{ROC for audio-level models. Bottom-left: The framewise GMM with MFCC; the pre-segmented GMM with MFCC; the pre-segmented HMM with MFCC; ES-KMeans with bottleneck features.}
+    \label{fig:roc_audio}
+\end{figure*}
 
-The GMM model can be simplified into a KMeans-based clustering model by removing the covariance parameters and modeling each image concept $y_i$ as a set of clusters with centroid $\{\mu_{y_i}^m\}_{i=1, m=1}^{T_y, M}$. Instead of maximizing the likelihood function, the model tries to minimize:
-\begin{align}\label{eq:multimodal_kmeans_obj}
-    \min_{\mathbf a \in \mathcal A, \mathbf m \in [M]^{T_x}} \sum_{t=1}^{T_x} \|\mathbf x_t - \mu_{y_{a_t}}^{m_t}\|^2,
-\end{align}
-which can be seen as an extreme-version of Eq. (\ref{eq:multimodal_gmm_objective}) where the variances of the data for a given cluster goes to 0. The update is similar to the standard KMeans algorithm but guided by the image concepts corresponding to each utterances:
-\begin{align}\label{eq:multimodal_kmeans_update}
-    a_t^*, m_t^* &= \arg\min_{i, m}\|\mathbf x_t - \mu_{y_{i}}^{m}\|^2\\
-    \mu_{y_i}^m &= \frac{1}{|\{t: a_t=i, m_t=m\}|}\sum_{t: a_t=i, m_t=m} \mathbf x_t.
-\end{align}
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.9\textwidth]{fig_8.png}
+    \caption{Attention/align probability matrices annotated with discovered word-like units of various phone-level models for the utterance ``A child in a pink dress is climbing pass the stairs of a entry way''. Leftmost: simplified mixture model; middle left: enriched mixture model; middle right: segmental model; rightmost: NMT}
+    \label{fig:attention_plots}
+\end{figure*}
 
-Instead of modeling the individual feature frames as cluster, which may overlap across different word unit and leads to over-segmentation, it is wise to consider modeling a fixed context window around each frame or modeling the correlation across multiple frames using HMM-based model.
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.9\textwidth]{fig_9.png}
+    \caption{Align probability matrices annotated with discovered word-like units of various audio-level models for the utterance ``A child in a pink dress is climbing pass the stairs of a entry way''. Leftmost: enriched mixture model with BN feature; middle left: dynamic segmental KMeans; middle right: static segmental GMM; rightmost: static segmental HMM}
+    \label{fig:audio_alignprob_plots}
+\end{figure*}
 
-\subsubsection{Segmental Approach}
-While most clustering techniques require data to be fixed-length, the word discovery inherently requires modeling variable-length context for each word. Existing works on acoustic word discovery has modeled variable-length context by explicitly modeling the segmentation in the generative process. However, since the word segmentation is generally assumed to be not directly observable in the acoustic feature, certain prior assumption about the word length distribution is often used. \cite{Lee2012} models the length probability as:
-\begin{align}\label{eq:len_prob_seg_hmm}
-    p(l_i=l|\mathbf z_i, l_1^{i-1}) = &\frac{(1 - \alpha_{z_i})^l \alpha_i}{\sum_{l'=1}^{T_x - \sum_{i'=1}^{i-1}l_{i'}}(1 - \alpha_i)^l \alpha_i},\\
-    1\leq l \leq T_x - \sum_{i'=1}^{i-1}l_{i'},
-\end{align}
-which is simply the length distribution of $i-th$ segment starting with $1$ and continuing with $0$ of a binary string generated by $i.i.d$ Bernoulli random variables with parameter $\alpha_{z_i}$. 
+The phone-level word discovery results are summarized in Table. (\ref{tab:phone_level_result}).
+From the retrieval based scores, we see that segmental model is better at aligning phone to image concepts as it performs better in both recall and precision than the simplified model. The enriched model, however performs worse than the simplified model potentially because the image concepts do not appear in approximately the same order as the corresponding words in the utterances. 
 
-The frame-level mixture models can also be viewed as a segmental approach where the length probability of the segments are generated by a fixed distribution that has the same form of Eq. (\ref{eq:len_prob_seg_hmm}):
-\begin{align}\label{eq:len_prob_seg_mixture_smt}
-    p(l_i=l|\mathbf a_i, l_1^{i-1}) = &\frac{\frac{1}{T_y+1}^l (1-\frac{1}{T_y+1})}{\sum_{l'=1}^{T_x - \sum_{i'=1}^{i-1}l_{i'}}(\frac{1}{ T_y+1})^l(1-\frac{1}{T_y+1})}, \\
-    1\leq l \leq T_x - \sum_{i'=1}^{i-1}l_{i'},
-\end{align}
-which especially when $T_y$ is large, tends to generate shorter segments.
+The alignment probability/attention matrices for the four models are shown in Fig. (\ref{fig:attention_plots}). For the segmental model, the alignment probabilities are defined as the Viterbi probabilities normalized across concepts at a given time.  From the alignment probability, we notice that the segmental model has much sparser alignment probabilities and produces much more continuous pseudo-words that are closer the length of a real word, suggesting that contextual information between phones is crucial for discovering word-like units. However, the segmental model seems to be worse at distinguishing \texttt{NULL} from actual concepts, making many false positives, indicating that the \texttt{NULL} concept is statistically distinct from the rest of the concepts and should be modelled separately. Another casuse of the false discovery stems from the limitation of a concept-independent jump transition probabilities: it appears that the segmental model prefers smaller jumps than larger ones, causing a exceedingly slow transition from one concept to another. This is evident from the example attention plot: almost every transition moves one step at a time. In particular, we can clearly see that the model stays at the concept ``child'' for eight extra phones until the align probability drops gradually. Another observation is that the accuracy of SMT is generally lower than the retrieval metrics as opposed to higher in the case of NMT primary because SMT is less biased towards concepts that appear more frequently while NMT tends to memorize the prior distribution of the concepts in the training data.
 
-To make less assumption about the word length probability distribution, one may be inspired by the fertility-based approach used in \cite{Brown92} and define fertility probabilities $p(l|z)$ for each word cluster. The posterior probability for the word cluster $z_i$ is then:
-\begin{align}\label{eq:post_prob_fertility_smt}
-    p(z_i=j|\mathbf x) &= \sum_{n=1}^{T_x}\sum_{l_1^n} p(z_i=j, l_1^{n}|\mathbf x)\\
-    &= \frac{\sum_{n=i}^{T_x}\sum_{t_i^1, l_i} p(z_i=j) p(\mathbf x_{t_i^1:t_i^1+l_i}|z_i=j)}{\sum_{n'=1}^{T_x}\sum_{l_1^{n'}'}\sum_{j'=1}^K p(z_i=j') p(\mathbf x_{t_i^1':t_i^1'+l_i'}|z_i=j')}. 
-\end{align}
+The ROC for the four models are shown in Fig. (\ref{fig:roc_phn}). All three SMT models are capable of detecting top concepts like ``man'', ``girl'', ``water'' and ``shirt'' with a nontrivial tradeoff between true positive rate and false positive rate. While both the simplified and segmental models have trouble discovering words for the extremely frequent concepts ``dog'', the enriched model is able to handle it more consistently. This difficulty is consistent with the previous hypothesis for why the accuracy score is lower than the retrieval metrics. Overall, the enriched model has the most consistent ROCs across different concepts. The ROC for the NMT has the highest variability across concepts. For concepts like ``dog'' and ``girl'', a higher attention weights seem to indicate the absence rather than the existence of the concept.    
 
-However, exact computation of of Eq. (\ref{eq:post_prob_fertility_snt}) turns out to be too expensive to compute. Approximate computation of the probability is, however, possible by making use again of the ``dominant path'' approximation. suppose there is an dominant segmentation $l_1^n$ with $p(l_1^n|\mathbf x)\approx 1$. Eq. (\ref{eq:post_prob_fertility_smt}) can be then approximated as:
-\begin{align}\label{eq:post_prob_seg_smt}
-   &\frac{\sum_{n=1}^{T_x}\sum_{l_1^n} p(z_i=j) p(\mathbf x_{t_i^1:t_i^1+l_i}|z_i=j)}{\sum_{n'=1}^{T_x}\sum_{l_1^{n'}'}\sum_{j'=1}^K p(z_i=j') p(\mathbf x_{t_i^1':t_i^1'+l_i'}|z_i=j')} \\
-   \approx & \frac{p(z_i=j)p(\mathbf x_{t_i^{1*}:t_i^{1*}+l_i^*}|z_i=j)}{\sum_{j'=1}^K p(z_i=j) p(\mathbf x_{t_i^{1*}:t_i^{1*}+l_i^*}|z_i=j')}.
-\end{align}
-In fact, the segmental-embedded GMM in \cite{Kamper17} can be interpreted as using such an approximation with $p(\mathbf x_{t_i^1:t_i^1+l_i}|z_i=j)\propto \mathcal N(f(\mathbf x_{t_i^1:t_i^1+l_i});\mu_j, \sigma^2\mathbf I)^{l_i}$ and $l_1^{n*}$ is the Viterbi segmentation obtained by solving a dynamic program. 
+%\begin{figure}
+%    \centering
+%    \includegraphics[width=0.5\textwidth]{fig_6.png}
+%    \caption{Length Distribution for various phone-level models}
+%    \label{fig:len_dist}
+%\end{figure}
+\begin{table}[t]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \multicolumn{2}{|c|}{}   &SylSeg &ES-KMeans & \begin{tabular}{@{}c@{}}
+            Simplified\\
+            Dynamic Segmental
+        \end{tabular}\\
+    \hline
+    \multirow{2}{*}{Recall}  & MFCC & \multirow{2}{*}{83.5}  & 35.7   & 35.6  \\
+            & BN    & & -  & 38.2  \\
+    \hline
+    \multirow{2}{*}{Precision} & MFCC &\multirow{2}{*}{33.9}   & 41.0  & 40.2  \\ 
+    & BN    &  & - & 41.6  \\
+    \hline
+    \multirow{2}{*}{F1}  &  MFCC & \multirow{2}{*}{48.2} & 38.1  & 37.2  \\
+        & BN    &      & -     & 39.9  \\
+    \hline
+    \end{tabular}
+    \caption{audio-level word segmentation results}
+    \label{tab:audio_seg_result}
+\end{table}
+\begin{table*}
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+    \hline
+\multicolumn{2}{|c|}{} & \begin{tabular}{@{}c@{}}
+     Simplified \\
+     Mixture
+\end{tabular} & \begin{tabular}{@{}c@{}}
+     Enriched\\
+     Mixture
+\end{tabular} &  \begin{tabular}{@{}c@{}}
+          Static Segmental \\
+          GMM
+\end{tabular} & \begin{tabular}{@{}c@{}}
+          Static Segmental \\
+          HMM
+\end{tabular} & \begin{tabular}{@{}c@{}}
+     Simplified Dynamic \\
+     Segmental
+\end{tabular} & \begin{tabular}{@{}c@{}}NMT \\
+(Normalized ov. Time)\end{tabular}\\
+\hline
+\multirow{2}{*}{Accuracy} & MFCC & 32.2 & 27.1  & 36.6  & 31.2  &  28.0 & 36.6  \\
+& BN    & 35.6  &  36.6 & $\mathbf{40.8}$  & 37.9  & 29.7 & 30.2 \\
+\hline
+\multirow{2}{*}{Recall} & MFCC  & 30.4  & 27.5  & 36.1  & 32.7  & 26.2  & 26.0 \\
+                        & BN    & 36.5 & 36.4  & $\mathbf{44.1}$    & 39.7  & 37.4  & 24.5  \\
+\hline
+\multirow{2}{*}{Precision} & MFCC  & 29.8  & 26.9 & 34.7 & 30.6   & 23.9  & 21.0  \\
+                           & BN    & 34.6 & 34.3 & $\mathbf{40.5}$ & 36.5   & 39.4  &  23.2 \\
+\hline
+\multirow{2}{*}{F1} & MFCC  & 30.1  & 27.2  & 35.4  & 31.6  & 25.0  & 23.1  \\
+                    & BN    & 35.5 &  35.3  & $\mathbf{42.3}$  & 38.0  & 38.3  & 23.8  \\
+\hline
+\multirow{2}{*}{\begin{tabular}{@{}c@{}}
+     Avg. Word Length\\
+     (True Avg. = 61.2)
+\end{tabular}} & MFCC & 3.14  & 3.26  & 39.9  & 40.8  & 140.1  &   \\
+                                   & BN    & 6.32  & 6.31  & 42.2  & 39.9   & $\mathbf{71.8}$   &  \\
+\hline
+\end{tabular}
+    \caption{Audio-level Word Discovery Results}
+    \label{tab:audio_level_result}
+\end{table*}
+\subsubsection{Audio-level discovery}
+The Tab. (\ref{eq:audio_level_result}) shows the audio-level word discovery results. Segmental models generally outperforms the simplified model approaches and produce words more realistic lengths. The static segmental models generally performs better than the dynamic model when using MFCC. The static segmental GMM performs best when using either MFCC or BN, suggesting that the dynamic segmentation may be unnecessary for our dataset since most words has one or two syllables. This is also consistent with the observation that the Markov assumption does not boost the performance of word discovery, suggesting that different syllables in the speech is weakly correlated. The Dynamic segmental model produces words of the most realistic lengths when using BN but tend to under-segment and create extremely long segment when using MFCC. The bottleneck feature performs significantly better than the MFCC in all models possibly by incorporating more contextual information. The overall result shows a dramatic drop in performance compared to the phone-level case, possibly because of the aliasing introduced by the resampled embedding approach, the speaker variability and other loss of information during the feature extraction process. Indeed, from Table. (\ref{tab:audio_seg_result}), features seem to subvert the segmentation process since the feature-free SylSeg model has a higher F1 scores than the feature-dependent ES-KMeans model and Multimodal ES-Kmeans model, while the similar phone-level mixture models are likely to improve the F-score given a pre-segmentation. 
 
-\subsection{NMT models}
+The ROC curves for the audio-level word-discovery results are shown in Fig. (\ref{fig:roc_audio}). The frame-wise approach performs almost at chance level and does  not make any nontrivial discoveries. The problem is mitigated by the pre-segmented GMM and starts to have above-random performance detecting concepts like ``male-child'' and ``man''; the pre-segmented HMM further improves the discovery of common concepts by incorporating contextual information from the neighboring syllables, but miss many occurrences of concepts ``shirt'' and ``man''. The dynamic refinement of segmentation by ESKMeans also helps the detection of common concepts but interestingly, also having trouble discovering the concept ``shirt''.   
 
-\section{Multimodal word discovery with audio and image regions}
-Theoretically, the multimodal framework can also be extended to deal directly with audio $x_1, \cdots, x_{T_x}$ and image regions containing single objects $y_1, \cdots, y_{T_y}$. In this case, again we assume there is one object for each image concept in each example but no longer know if two image regions from two examples correspond to the same object. There is also no knowledge about the total number of objects. The SMT model in this case combines the formalism of SMT Canonical Component Analysis (CCA) models.
-\subsection{SMT model}
-Analogous to the generative process for the discrete mixture model case, the audio-regional mixture model generates the image regions and audio as follows:
-\begin{align}\label{eq:audio_region_gp}
-    &a_t \sim \mathbf{Categorical}(\frac{1}{(1+T_y)}, \cdots, \frac{1}{(1+T_y)})\\
-    &\pi \sim \mathbf{Dir}(\alpha)\\
-    &c_i \sim \pi\\
-    &\by_i \sim \mathcal N(\mu_{c_i}, \Sigma_{c_i}^\top), i=1,\cdots,T_y\\
-    &n_i \sim \mathcal N(0, \Sigma_{n, c_i})\\
-    &\bx_t = A \by_{a_t} + \bn, t=1,\cdots,T_x.
-\end{align}
-However, the EM-algorithm for this generative process will involve nonlinear coupling of the parameters for the audio and image regions. Instead, we employ an \textit{reparameterization} by introducing $\bz \sim \mathcal N(0, \bI)$ and $(C_x^i, C_y^i), i=1,\cdots,K$ such that $\bx_t := C_x^{c_{a_t}} \bz + \bw_i$ and $\by_i := C_y^{c_i}\bz + \bv_i$ for some normal noise variables with zero-mean and covariance $\Sigma_w, \Sigma_v$ respectively. This is equivalent to the original process by letting $A = C_x^{(c_{a_t})}C_y^{(c_{a_t})\top} (C_y^{c_{a_t}}C_y^{c_{a_t}}^\top+\Sigma_w)^{-1}, \Sigma_{n, c_i} = \bI - C_y^{(c_{a_t})\top} (C_y^{c_{a_t}}C_y^{c_{a_t}}^\top+\Sigma_w)^{-1}C_y + \Sigma_v$. 
-
-% More about the equivalence
-this serves to decouple the expression inside the expectation. The generative process now becomes:
-\begin{align}\label{eq:audio_region_repara_gp}
-    &a_t \sim \mathbf{Categorical}(\frac{1}{(1+T_y)}, \cdots, \frac{1}{(1+T_y)})\\
-    &\pi \sim \mathbf{Dir}(\alpha)\\
-    &c_i \sim \pi\\
-    &\bz_i \sim \mathcal N(0, \bI)\\ 
-    &\bw_i \sim \mathcal N(0, \Sigma_{w, c_i}), \bv_i \sim \mathcal N(0, \Sigma_{v, c_i})\\
-    &\by_i \sim C_y^{c_i}\bz_i + \bw_i, i=1,\cdots,T_y\\
-    &\bx_t = C_x^{c_i} \by_{a_t} + \bv_i, t=1,\cdots,T_x.
-\end{align}
-
-The posterior probability:
+The align probability matrices for four audio-level models are shown in Fig. (\ref{fig:audio_alignprob_plots}). Different from phone-level plots, the plots are not generated by exponentiating the raw translation probabilities but a smoothed version with some temperature $T$:
 \begin{align*}
-    p(\mathbf z|\mathbf x, \mathbf y) = \mathcal N(\mathbf z; \mu_{\mathbf z|\mathbf x, \mathbf y}, \Sigma_{\mathbf z|\mathbf x, \mathbf y}),
+    p'(i(t)|\mathbf x, \mathbf y) = \frac{\mathbf{exp}(logp(i(t)|\mathbf x, \mathbf y)/T)}{\sum_i \mathbf{exp}(logp(i'|\mathbf x, \mathbf y)/T)}.
 \end{align*}
-where $\mu_{\mathbf z|\mathbf x, \mathbf y} := C_x^\top \Sigma_x^{-1}\mathbf x + C_y^\top \Sigma_y^{-1}(\mathbf y - C_y C_x^\top \Sigma_x^{-1}x), \Sigma_{\mathbf z|\mathbf x, \mathbf y} := I - C_x\top \Sigma_x^{-1} C_x $(continue).
+The smoothing does not alter the trend of the probabilities but make it more visually informative. We found $T=1000$ to work well generally. However, the performance of HMM is downgraded by the high false discovery rate similar to the phone-level case. From the plots, the two static segmental models perform similarly in true discoveries and the HMM tend to discover more continuous words, but the HMM has more false positives and false negatives due to the delay effect similar to the phone-level case. Indeed, all except the static segmental HMM model clusters the first few frames of silence to \texttt{NULL} symbol. Overall, most models display a high level of false discovery rates. This suggests that statistical property of \texttt{NULL} symbol is different from other concepts and need to be modelled differently.  
 
-\section{Prior works: unsupervised word discovery and speech-to-text tranlation}
 
-\subsection{Unsupervised word discovery}
-% Discussion of Lee & Glass's model
-The first unsupervised word/subword discovery system was proposed by \cite{Lee2012}. Their model used the following generative process:
-% TODO: two equations per line
-\begin{align}\label{eq:generate_subword_hmm}
-    \mathbf \pi &\sim \mathbf{Dir}(\gamma)\\
-    \mathbf \theta_c &\sim \mathbf{Dir}(\theta_0), c \in \{1, \cdots, K\}\\
-    \mathbf b_t &\sim \mathbf{Bernoulli}(\alpha_b), t \in \{1, \cdots, T\}\\
-    d_i &= \left(\min_{t>t_{i-1}:b_t=1} t\right) - t_{i-1}\\
-    c_i &\sim \mathbf \pi, i \in \{1, \cdots, L\}\\
-    s_t &\sim \mathbf a^{c_i, s^{t-1}}\\
-    \mathbf m_t &\sim \mathbf w^{c_i, s_t}\\
-    \mathbf x_t &\sim \mathcal N(\mathbf \mu^{c_i, s_t}_{m_t}, (\mathbf \lambda^{c_i, s_t}_{m_t})^{-1}\mathbf I), \\
-    t &\in \{t_{i-1}+1, \cdots, t_{i-1}+d_i\},
-\end{align}
-where $\mathbf \theta_c = [\mathbf a^{c_i}, \mathbf w^c, \mathbf \mu_t^{c}, \mathbf \lambda_i^c]$ and $t_{-1} = 0$, $\mathbf{Dir}(\theta)$ is the Dirichlet prior distribution with concentration parameter $\theta$ and $\mathbf{Bernoulli}(\alpha_b)$ is the Bernoulli distribution with probability $\alpha_b$ to be 1. Intuitively, the model first generates $K$ HMMs to model each subword cluster, and then for each utterance $\mathbf x$ it first generates a segmentation as specified by the duration vector $\mathbf d$ and model each segment of length $d_i$ with an HMM for cluster $c_i$. The model is trained using EM algorithm with Gibbs sampling. To infer the cluster id of each frame of the utterance, the model needs to find $\mathbf d, \mathbf c$ such that $p(\mathbf x, \mathbf d, \mathbf c)=p(\mathbf x, \mathbf d)p(\mathbf c|\mathbf x, \mathbf d)$  is maximized, which amounts to evaluate the posterior probability $p(\mathbf d_i, \mathbf x)$ and $p(\mathbf c_i|\mathbf x, \mathbf d)$. Due to prohibitive computational complexity to evaluate the expressions exactly, \cite{Lee2012} proposed to approximate the posterior with Gibbs sampling. The inference can be then essentially broken into two problems: first, finding an optimal segmentation of the utterance; second, finding the optimal cluster assignment given the segments of the utterance. The second problem is straightforward and amounts to finding the maximal posterior probabilities of the clusters; the first problem can be solved using a dynamic program with $\delta(t) := p(\mathbf y_{1:t}, z_{1:k(t)})$, where $k(t)$ is the cluster assigned to frame at time $t$:
-\begin{align}\label{eq:subword_hmm_dp}
-    \delta(t) &= \max_{\tau}\{\delta(t-\tau) (\sum_{c=1}^K\pi_c \sum_{i=1}^{N}\alpha^c_{\tau}(i))\} \\
-    \phi(t) &= t - \arg \max_{\tau}\{\delta(t-\tau)\sum_{c=1}^K\pi_c \sum_{i=1}^{N}\alpha^c_{\tau}(i)\} \\
-\end{align}
-where $N$ is the number of state of the HMMs and $\alpha^c_(t)$ is the forward probability of HMM for cluster $c$. The end boundaries for the optimal segmentation is then $[1, \cdots, \phi(\phi(T)), \phi(T)]$.
 
-% Discussion of Kamper 2016/2017 models
-\cite{Kamper2017} has proposed a simplified Bayesian model that learns to jointly segment and cluster an audio waveform $\mathbf y = [y_1 \cdots y_T]$ into word-like unit $\mathbf z = z_1 \cdots z_K$. To that end, they employed an \textit{acoustic embedding} to map audio segments of variable duration into a fixed dimensional representation: $\mathbf x_i = f(\mathbf y_{t_1^i:t_2^i})$, where $i \in \{1, \cdots, M\}$ and $1 \leq t_1^i < t_2^i \leq T$. and $t_1^i \leq t_2^{i-1}, \forall i \in \{2, \cdots, M\}$. In the case where the entire audio consisting of spoken word, their system can be applied with full coverage and thus $t_1^i = t_2^{i-1}$. 
+\subsubsection{Phone-to-concept retrieval}
+The result for phone-to-concept retrieval compared with the speech-to-image and text-to-image systems are shown in Table. (\ref{tab:retrieval_results}). The performance of the simplified SMT retriever is just in between its speech-to-image and the text-to-image counterparts while the segmental SMT retriever is significantly better in all recall scores. However, the comparison is unfair since we make use of the groundtruth hard labels for both the speech and image. Many of the errors made by our systems come from either unknown image concepts or image with very similar top concepts. But the result, however, demonstrates that detecting the entities is the key for performing well in the image retrieval task for Flickr 8k and that the key challenge of getting good performance occurs at the level of raw sensory inputs rather than the concept level: much semantic information is lost while the existing system tries to extract the phone  and image concept clusters from what it sees and hears due to factors like speaker variability, shape and lighting variability, phonetic variability and environmental noise. Nevertheless, there is a substantial room for improvement on the concept level, especially in making use of the contextual information between concepts in retrieval. For example, the concept ``shirt'' and ``hand'' are more likely when a person is present. Another important point is that, the generative model is good for retrieval but not the more challenging task of captioning primarily due to the lack of modeling between the relation between concepts.  
 
-Their algorithm then iterates between finding a cluster assignment given segmentation and adjusting the segmentation given a cluster assignment. For a fixed segmentation, the acoustic embeddings are then modeled by the following GMM with Dirichlet prior for the cluster prior distributions and spherical normal for the cluster means: 
-\begin{align}\label{eq:generate_bes_gmm}
-    & \mathbf \pi \sim \mathbf{Dir}(a/K \mathbf 1)\\
-    & \mu_c \sim \mathcal N(\mu_0, \sigma_0^2 \mathbf 1) \\
-    & z_i \sim \mathbf \pi \\
-    & \mathbf x_i \sim \mathcal N(\mu_{z_i}, \sigma^2 \mathbf I).
-\end{align}
-% More about the Gibbs sampling approach related to the model
-The model can be trained using EM algorithm with Gibbs sampling and assign clusters by comparing the posterior probabilities $p(z_i=k|x_i)$. Given the clustering assignment, the model then updates the segmentation by performing the following dynamic program, analogous to \ref{eq:subword_hmm_dp}:
-\begin{align}\label{eq:bes_gmm_dp}
-    \delta(t) &= \max_{s}\{\delta(t-s) p(y_{t-s+1:t}|z_{k(t-s+1)})\} \\
-    &= \max_s \{\alpha(t-s) p(f(y_{t-s+1:t}))^s\}\\
-    \phi(t) &= t - \arg \max_{s}\{\delta(t-s) p(y_{t-s+1:t}|z_{k(t-s+1)})\} \\
-    &= \max_s \{\delta(t-s) p(f(y_{t-s+1:t}))^s\}.
-\end{align}
-
-% Discussion of Goddard et. al.'s system and prior works
-\subsection{Speech-to-text translation}
-
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+        & Recall@1  & Recall@5   & Recall@10  \\
+    \hline
+        Simplified SMT & 9.42\% & 21.1\% & 29.1\% \\
+        Segmental SMT & 46.7\% & 65.2\%  & 72.2\%  \\
+        Harwath\&Glass\cite{Harwath15} & - & - & 17.9\%\\
+        Karpathy\cite{Karpathy15} & 10.3\% & 31.4\% & 42.5\%\\
+    \hline
+    \end{tabular}
+    \caption{Comparison of query-by-example image search with spoken/phone sequence result}
+    \label{tab:retrieval_results}
+\end{table}
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
 % For figures, \caption should occur after the \includegraphics.
@@ -879,7 +1170,7 @@ The model can be trained using EM algorithm with Gibbs sampling and assign clust
 % \fnbelowfloat command of the stfloats package.
 
 \section{Conclusion}
-The conclusion goes here.
+This paper describes a unified framework for multimodal word discovery with spoken captions and image concepts. Four systems were tested with three different representations of the spoken caption: the groundtruth phonetic labels, MFCC and MBN. With the amount of data we have, the segmental SMT approach performs best in the phone-level while the enriched SMT performs best in the audio-level, according to our evaluation metrics. We applied our word discovery system to the task of image retrieval and show that the segmental SMT-based system achieves $72.2 \%$ recall@10 score in the phone-level. However, the drop in performance of all systems in the audio-level suggests a urgent need for better unsupervised phone-level and syllable-level representation for spoken language.  
 
 
 
@@ -901,20 +1192,12 @@ The conclusion goes here.
 
 
 \appendices
-\section{Proof of the First Zonklar Equation}
-Appendix one text goes here.
-
-% you can choose not to have a title for an appendix
-% if you want by leaving the argument blank
 \section{}
-Appendix two text goes here.
 
 
 % use section* for acknowledgment
 \section*{Acknowledgment}
 
-
-The authors would like to thank...
 
 
 % Can use something like this to put references on a page

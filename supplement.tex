@@ -1,0 +1,127 @@
+\subsection{Acoustic feature extraction}
+In the audio level, instead of phone sequence, we are given a sequence of acoustic feature vectors $\{\mathbf x_t\}_{t=1}^{T_x}$.  
+Since features such as spectrogram or cochleagram tend to be high-dimensional, one essential step is to compress the audio features into lower dimensional space. Two main alternatives exist: one way is to employ knowledge in speech science to find a data-independent subspace, such as the mel-frequency subspace used in the MFCC ; another way is to find a data-dependent subspace using statistical models such as linear Gaussian models \cite{Roweis1997} or neural networks \cite{Fer2017}. The second approach is generally known as the \textit{bottleneck features}. The two approach can often be combined by, for example, extracting bottleneck features from MFCC.
+
+The classical bottleneck feature can be viewed as the following linear Gaussian process:
+\begin{align}\label{eq:bnf_gp}
+    \mathbf z &\sim \mathcal N(0, \mathbf I)\\
+    \mathbf w &\sim \mathcal N(0, \mathbf \epsilon \mathbf I)\\
+    \mathbf  &= \mathbf C \mathbf z + \mathbf w,
+\end{align}
+where $\mathbf C \in \reals^{D \times B}$, and $B < D$ is the dimension of the bottleneck feature. The objective is to find $(\mathbf C, \mathbf\epsilon)$ such that $p(\mathbf x|\mathbf C, \epsilon)$ is optimized. Use the Baum-Welch auxiliary function:
+\begin{align}\label{eq:lg_bnf_objective}
+    &\max_{\bC, \epsilon} \mathbb E[\log p(\bx|\bz, \bC, \epsilon)|\bx, \bar\bC, \bar\epsilon]\\
+    =&\max_{\bC, \Sigma}\mathbb E[-\frac{1}{2}\log (2\pi)^{B}|\Sigma| - \frac{1}{2}(\bx - \bC\bz) \Sigma^{-1}(\bx - \bC\bz)|\mathbf x, \bar\Theta].
+\end{align}
+As a result, the parameters of following iterative update:
+\begin{align}
+    \hat{\bC} &= x \mu_{\bz|\bx}^\top(\Sigma_{\bz|\bx} + \mu_{\bz|\bx}\mu_{\bz|\bx})^{-1}\\
+    \hat{\Sigma} &= \mathbf E[(\bx - \bC \bz)(\bx - \bC \bz)^\top|\bx, \bar\Theta]\\
+    &= \bx \bx^\top - \bC \mu_{z|x} \bx^\top,
+\end{align}
+where $\mu_{z|x} := \bC^\top(\bC \bC^\top + \Sigma)^{-1} \bx, \Sigma_{\bz|\bx} = \bI - \bC^\top(\bC \bC^\top + \Sigma)^{-1}\bC$. The bottleneck feature is then:
+\begin{align}\label{eq:lg_bnf}
+    f_{bnf}(x) = \mu_{z|x} = \bC^\top(\bC\bC^\top + \Sigma)^{-1} x.
+\end{align}
+
+\section{Multimodal word discovery with audio and image regions}
+Theoretically, the multimodal framework can also be extended to deal directly with audio $x_1, \cdots, x_{T_x}$ and image regions containing single objects $y_1, \cdots, y_{T_y}$. In this case, again we assume there is one object for each image concept in each example but no longer know if two image regions from two examples correspond to the same object. There is also no knowledge about the total number of objects. The SMT model in this case combines the formalism of SMT Canonical Component Analysis (CCA) models.
+\subsection{SMT model}
+Analogous to the generative process for the discrete mixture model case, the audio-regional mixture model generates the image regions and audio as follows:
+\begin{align}\label{eq:audio_region_gp}
+    &a_t \sim \mathbf{Categorical}(\frac{1}{(1+T_y)}, \cdots, \frac{1}{(1+T_y)})\\
+    &\pi \sim \mathbf{Dir}(\alpha)\\
+    &c_i \sim \pi\\
+    &\by_i \sim \mathcal N(\mu_{c_i}, \Sigma_{c_i}^\top), i=1,\cdots,T_y\\
+    &n_i \sim \mathcal N(0, \Sigma_{n, c_i})\\
+    &\bx_t = A \by_{a_t} + \bn, t=1,\cdots,T_x.
+\end{align}
+However, the EM-algorithm for this generative process will involve nonlinear coupling of the parameters for the audio and image regions. Instead, we employ an \textit{reparameterization} by introducing $\bz \sim \mathcal N(0, \bI)$ and $(C_x^i, C_y^i), i=1,\cdots,K$ such that $\bx_t := C_x^{c_{a_t}} \bz + \bw_i$ and $\by_i := C_y^{c_i}\bz + \bv_i$ for some normal noise variables with zero-mean and covariance $\Sigma_w, \Sigma_v$ respectively. This is equivalent to the original process by letting $A = C_x^{(c_{a_t})}C_y^{(c_{a_t})\top} (C_y^{c_{a_t}}C_y^{c_{a_t}}^\top+\Sigma_w)^{-1}, \Sigma_{n, c_i} = \bI - C_y^{(c_{a_t})\top} (C_y^{c_{a_t}}C_y^{c_{a_t}}^\top+\Sigma_w)^{-1}C_y + \Sigma_v$. 
+
+% More about the equivalence
+this serves to decouple the expression inside the expectation. The generative process now becomes:
+\begin{align}\label{eq:audio_region_repara_gp}
+    &a_t \sim \mathbf{Categorical}(\frac{1}{(1+T_y)}, \cdots, \frac{1}{(1+T_y)})\\
+    &\pi \sim \mathbf{Dir}(\alpha)\\
+    &c_i \sim \pi\\
+    &\bz_i \sim \mathcal N(0, \bI)\\ 
+    &\bw_i \sim \mathcal N(0, \Sigma_{w, c_i}), \bv_i \sim \mathcal N(0, \Sigma_{v, c_i})\\
+    &\by_i \sim C_y^{c_i}\bz_i + \bw_i, i=1,\cdots,T_y\\
+    &\bx_t = C_x^{c_i} \by_{a_t} + \bv_i, t=1,\cdots,T_x.
+\end{align}
+
+The posterior probability:
+\begin{align*}
+    p(\mathbf z|\mathbf x, \mathbf y) = \mathcal N(\mathbf z; \mu_{\mathbf z|\mathbf x, \mathbf y}, \Sigma_{\mathbf z|\mathbf x, \mathbf y}),
+\end{align*}
+where $\mu_{\mathbf z|\mathbf x, \mathbf y} := C_x^\top \Sigma_x^{-1}\mathbf x + C_y^\top \Sigma_y^{-1}(\mathbf y - C_y C_x^\top \Sigma_x^{-1}x), \Sigma_{\mathbf z|\mathbf x, \mathbf y} := I - C_x\top \Sigma_x^{-1} C_x $(continue).
+
+\section{Prior works: unsupervised word discovery and speech-to-text tranlation}
+
+\subsection{Unsupervised word discovery}
+% Discussion of Lee & Glass's model
+The first unsupervised word/subword discovery system was proposed by \cite{Lee2012}. Their model used the following generative process:
+% TODO: two equations per line
+\begin{align}\label{eq:generate_subword_hmm}
+    \mathbf \pi &\sim \mathbf{Dir}(\gamma)\\
+    \mathbf \theta_c &\sim \mathbf{Dir}(\theta_0), c \in \{1, \cdots, K\}\\
+    \mathbf b_t &\sim \mathbf{Bernoulli}(\alpha_b), t \in \{1, \cdots, T\}\\
+    d_i &= \left(\min_{t>t_{i-1}:b_t=1} t\right) - t_{i-1}\\
+    c_i &\sim \mathbf \pi, i \in \{1, \cdots, L\}\\
+    s_t &\sim \mathbf a^{c_i, s^{t-1}}\\
+    \mathbf m_t &\sim \mathbf w^{c_i, s_t}\\
+    \mathbf x_t &\sim \mathcal N(\mathbf \mu^{c_i, s_t}_{m_t}, (\mathbf \lambda^{c_i, s_t}_{m_t})^{-1}\mathbf I), \\
+    t &\in \{t_{i-1}+1, \cdots, t_{i-1}+d_i\},
+\end{align}
+where $\mathbf \theta_c = [\mathbf a^{c_i}, \mathbf w^c, \mathbf \mu_t^{c}, \mathbf \lambda_i^c]$ and $t_{-1} = 0$, $\mathbf{Dir}(\theta)$ is the Dirichlet prior distribution with concentration parameter $\theta$ and $\mathbf{Bernoulli}(\alpha_b)$ is the Bernoulli distribution with probability $\alpha_b$ to be 1. Intuitively, the model first generates $K$ HMMs to model each subword cluster, and then for each utterance $\mathbf x$ it first generates a segmentation as specified by the duration vector $\mathbf d$ and model each segment of length $d_i$ with an HMM for cluster $c_i$. The model is trained using EM algorithm with Gibbs sampling. To infer the cluster id of each frame of the utterance, the model needs to find $\mathbf d, \mathbf c$ such that $p(\mathbf x, \mathbf d, \mathbf c)=p(\mathbf x, \mathbf d)p(\mathbf c|\mathbf x, \mathbf d)$  is maximized, which amounts to evaluate the posterior probability $p(\mathbf d_i, \mathbf x)$ and $p(\mathbf c_i|\mathbf x, \mathbf d)$. Due to prohibitive computational complexity to evaluate the expressions exactly, \cite{Lee2012} proposed to approximate the posterior with Gibbs sampling. The inference can be then essentially broken into two problems: first, finding an optimal segmentation of the utterance; second, finding the optimal cluster assignment given the segments of the utterance. The second problem is straightforward and amounts to finding the maximal posterior probabilities of the clusters; the first problem can be solved using a dynamic program with $\delta(t) := p(\mathbf y_{1:t}, z_{1:k(t)})$, where $k(t)$ is the cluster assigned to frame at time $t$:
+\begin{align}\label{eq:subword_hmm_dp}
+    \delta(t) &= \max_{\tau}\{\delta(t-\tau) (\sum_{c=1}^K\pi_c \sum_{i=1}^{N}\alpha^c_{\tau}(i))\} \\
+    \phi(t) &= t - \arg \max_{\tau}\{\delta(t-\tau)\sum_{c=1}^K\pi_c \sum_{i=1}^{N}\alpha^c_{\tau}(i)\} \\
+\end{align}
+where $N$ is the number of state of the HMMs and $\alpha^c_(t)$ is the forward probability of HMM for cluster $c$. The end boundaries for the optimal segmentation is then $[1, \cdots, \phi(\phi(T)), \phi(T)]$.
+
+% Discussion of Kamper 2016/2017 models
+\cite{Kamper2017} has proposed a simplified Bayesian model that learns to jointly segment and cluster an audio waveform $\mathbf y = [y_1 \cdots y_T]$ into word-like unit $\mathbf z = z_1 \cdots z_K$. To that end, they employed an \textit{acoustic embedding} to map audio segments of variable duration into a fixed dimensional representation: $\mathbf x_i = f(\mathbf y_{t_1^i:t_2^i})$, where $i \in \{1, \cdots, M\}$ and $1 \leq t_1^i < t_2^i \leq T$. and $t_1^i \leq t_2^{i-1}, \forall i \in \{2, \cdots, M\}$. In the case where the entire audio consisting of spoken word, their system can be applied with full coverage and thus $t_1^i = t_2^{i-1}$. 
+
+Their algorithm then iterates between finding a cluster assignment given segmentation and adjusting the segmentation given a cluster assignment. For a fixed segmentation, the acoustic embeddings are then modeled by the following GMM with Dirichlet prior for the cluster prior distributions and spherical normal for the cluster means: 
+\begin{align}\label{eq:generate_bes_gmm}
+    & \mathbf \pi \sim \mathbf{Dir}(a/K \mathbf 1)\\
+    & \mu_c \sim \mathcal N(\mu_0, \sigma_0^2 \mathbf 1) \\
+    & z_i \sim \mathbf \pi \\
+    & \mathbf x_i \sim \mathcal N(\mu_{z_i}, \sigma^2 \mathbf I).
+\end{align}
+% More about the Gibbs sampling approach related to the model
+The model can be trained using EM algorithm with Gibbs sampling and assign clusters by comparing the posterior probabilities $p(z_i=k|x_i)$. Given the clustering assignment, the model then updates the segmentation by performing the following dynamic program, analogous to \ref{eq:subword_hmm_dp}:
+\begin{align}\label{eq:bes_gmm_dp}
+    \delta(t) &= \max_{s}\{\delta(t-s) p(y_{t-s+1:t}|z_{k(t-s+1)})\} \\
+    &= \max_s \{\alpha(t-s) p(f(y_{t-s+1:t}))^s\}\\
+    \phi(t) &= t - \arg \max_{s}\{\delta(t-s) p(y_{t-s+1:t}|z_{k(t-s+1)})\} \\
+    &= \max_s \{\delta(t-s) p(f(y_{t-s+1:t}))^s\}.
+\end{align}
+
+\section{Nonparametric Segmental Model}
+While in the previous section, the alignment is assumed to be generated uniformly and exact inference with EM algorithm is used to estimate the GMM parameters. However, not only this is a local optimum, but also that the sparsity of the posterior probability may not be ensured. The uniform prior may be a reasonable assumption for phone alignments, but in the audio-level, since the feature vectors of the same concept can have much higher variability, uniform prior is more likely to create fragmented alignments. One may encourage sparsity of the alignment posterior probability $p(i(t)|\mathbf x, \mathbf y)$ with nonparametric Bayesian models. The idea is to add a weakly informative prior to the parameters of the model, $\theta$, so the posterior of the parameters is well-defined. Furthermore, priors like Dirichlet distribution on the alignment encourages sparsity of the probability by making the highly aligned concept even more likely.
+
+In the case of audio-level word discovery, $\theta = (\pi, \mathbf c, \mathbf \mu)$, namely, the alignment prior $\mathbf \pi(T_y)$ and the mixture prior and means of the mixture model. For simplicity, the covariance of the mixture is assumed to be diagonal and fixed: $\Sigma(y) \equiv \sigma \mathbf I, y \in \mathcal Y$. A common choice is to use the conjugate priors of the data distribution:
+\begin{align}\label{eq:parameter_prior}
+   p(\pi(T_y)|\pi_0) &= \text{Dir}(\frac{\pi_0}{T_y+1})\\
+   p(\mu|\mu_0) &= \mathcal N(\mathbf \mu; \mathbf \mu_0, \sigma_0)\\
+\end{align}
+where $\text{Dir}(\pi;\pi_0) := \frac{\Gamma(\pi_0 K)}{\prod_{k=1}^K\Gamma(\pi_0)}\prod_{k=1}^K\pi_k^{\pi_0-1}$. The parameter $\pi_0$ controls how much the prior depends on the initial uniform distribution, thus controlling the sparsity of the posterior. Let $\theta_0 = (\pi_0, \mu_0, \sigma_0)$, instead of maximizing Eq. (\ref{eq:audio_trans_prob}), the model tries to maximize:
+\begin{align}
+    p(\mathbf \theta|\mathbf x, \mathbf y, \theta_0) \propto p(\mathbf \theta|\theta_0) p(\mathbf x|\mathbf y, \mathbf \theta),
+\end{align}
+which in the Gibbs sampling framework, entails maximizing:
+\begin{align}
+    p(\theta|\mathbf x, \mathbf y, \mathbf s, \tilde{\mathbf A}, \theta_0),
+\end{align}
+where $\mathbf s \sim p(\mathbf s|\mathbf x, \mathbf y), \tilde{\mathbf A} \sim p(\cdot|\mathbf x, \mathbf y, \mathbf s)$. The alignment can be sampled as:
+\begin{align}\label{eq:sample_alignment}
+    p(i(s_j)|\tilde{\mathbf A}^-, \mathbf x, \mathbf y, \mathbf s, \theta_0) &\propto p(i(s_j), \mathbf x|\tilde{\mathbf A^-}, \mathbf y, \mathbf s, \theta_0) \\
+    &= p(i(s_j)|\tilde{\mathbf A}^-, \mathbf y, \mathbf s, \theta_0) \\
+    &p(\mathbf x_{s_j:s_{j+1}-1}|\mathbf x^-, \tilde{\mathbf A}, \theta_0), j = 1, \cdots, N.
+\end{align}.
+where $\tilde{\mathbf A}^-$ and $\mathbf x^-$ are the part of the assignment matrix and observation outside the segment $j$. Using the property of conjugate priors, the above and rest of the sampling equations are similar to those presented in \cite{Kamper2016, Kamper2017}.
+
+% Discussion of Goddard et. al.'s system and prior works
+\subsection{Speech-to-text translation}
