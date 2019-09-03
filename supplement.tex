@@ -125,3 +125,72 @@ where $\tilde{\mathbf A}^-$ and $\mathbf x^-$ are the part of the assignment mat
 
 % Discussion of Goddard et. al.'s system and prior works
 \subsection{Speech-to-text translation}
+
+ %\begin{align}\label{eq:segmm_sample_segment}
+ %   l(t) &\sim p(l(t)|\mathbf{x}, \mathbf{y})\\
+ %   &\propto p(\mathbf{x}, l(t)|\mathbf{y})\\
+ %   &\propto p(\mathbf{x}_{1:t}, l(t)|\mathbf {y})\\
+ %   &\propto \bar{\alpha}_t p(\mathbf{x}_{t-l(t)+1:t}|\mathbf y)\\
+ %   &= \bar{\alpha}_t p(f_e(\mathbf{x}_{t-l(t)+1:t})|\mathbf y)^{l(t)},
+%\end{align}
+%where $\bar{\alpha}_t$ can be calculated recursively and $p(f_e(\mathbf{x}_{t-l(t)+1:t}|\mathbf y) = \sum_{i=1}^{T_y}\sum_{m=1}^{M}p(f_e(\mathbf{x}_{t-l(t)+1:t}, i, m|\mathbf y) \propto \sum_{i=1}^{T_y}\sum_{m=1}^{M}c_m(y_i)\mathcal N(f_e(\mathbf{x}_{t-l(t)+1:t})|\mu_m(y_i), \Sigma_m(y_i))$. 
+
+ %Gibbs sampling  approximates Eq. (\ref{eq:baum-besgmm}):
+%\begin{align}\label{eq:trans_prob_segmental_sampled}
+%     p(i(t)|\mathbf y, \mathbf x) = \mathbb E_{\mathbf s \sim p(\mathbf s|\mathbf x, \mathbf y))}[p(i(t)|\mathbf x, \mathbf y, \mathbf s)]\\
+%     \approx p(i(t)|\mathbf x, \mathbf y, \bar{\mathbf s}).
+%\end{align} 
+
+
+%One approach proposed by \cite{Kamper2017} is to assume that the segmentation to be equally likely. Define $\mathbf b \in \{0, 1\}^{T_x}$ to be the \textit{boundary vector} such that $b_{s_j}=1, j=1,\ldots,N$ and 0 otherwise. Then then in their model, $p(b_t|\mathbf y) = \frac{1}{2}$ and $p(\mathbf s|\mathbf y)=p(\mathbf b|\mathbf y) = \frac{1}{2^{T_x}}$. \cite{Lee2012} makes a more general assumption that $p(b_t=1|\mathbf y) = \alpha_b$ and $p(\mathbf s|\mathbf y)=p(\mathbf b|\mathbf y) = \frac{1}{\prod_{t=1}^{T_x}\alpha_b^{b_t}(1-\alpha_b)^{1-b_t}}$. As a result, the number of segments per sentence will obey a binomial distribution with $(T_x, \alpha_b)$. 
+
+%With the additional information from the image concepts, the above expression for number of segments can be generalized by having $\alpha_b$ depending on the number of concepts. Intuitively, when there are more concepts, there should be more segments and $\alpha_b$ should be larger. For example, we can let $\alpha_b(T_y, T_x) = \frac{\alpha T_y}{T_x}$ for some constant $\alpha$ such that $\alpha T_y \leq T_x$ and
+%\begin{align}\label{eq:concept_dependent_n_segment}
+%    p(N|\mathbf y) = \text{Binomial}(N; T_x, \frac{\alpha T_y}{T_x}),
+%\end{align}
+%where $\text{Binomial}(m;n, p) := \left(\begin{array}{c}
+%     n  \\
+%     m 
+%\end{array}\right)p^m(1-p)^{n-m}$. It is also possible to make $\alpha_b$ concept dependent, similar to the fertility approach used in \cite{Brown93}, but it will requires more parameters. Besides, the support of the prior can be further shrunk by restricting the length of a single segment with prior knowledge about the range of word length, though this will make the approach language-dependent. 
+
+%Plug Eq. (\ref{eq:concept_dependent_n_segment}), the conditional independence assumption into Eq. (\ref{eq:audio_trans_prob}) yields:
+%\begin{align}\label{eq:audio_trans_prob_simplified}
+%    &\sum_{N=0}^{2\alpha \frac{T_y}{T_x}}\sum_{\mathbf s \in \mathcal S_N}\alpha(T_y, T_x)^N (1-\alpha(T_y, T_x))^{T_x-N}\nonumber\\
+%    &\frac{\epsilon}{(T_y+1)^{T_x}}\prod_{j=1}^{N}\sum_{i(s_j)=1}^{T_y}p(\mathbf x_{s_j:s_{j+1}-1}|y_{i(s_j)}).
+%\end{align}
+
+%The modeling problem then boils down to model the segment probabilities $p(\mathbf x_{s_j:s_{j+1}-1}|y_{i(s_j)})$. while a single phone occupies only one frame in the phone-level discovery, audio segment for the same phone/word may occupy variable frames. Besides modeling each segment using HMM \cite{Lee2012}, one existing approach \cite{Kamper2017} is to embed each segment into a fixed-dimensional space, so problem reduces to the phone-level discovery. Let the \textit{embedding vector} of the $j$-th segment be $v_j = f_e(x_{s_{j-1}:s_j}), s_0:=1$.
+
+%Suppose the segmentation is known, Eq. (\ref{eq:smt_trans_prob}) becomes:
+%\begin{align}\label{eq:segmental_smt_trans_prob}
+%    p(\mathbf{x}, \mathbf{s}|\mathbf{y}, \tilde{\mathbf{A}})
+%    &= \sum_{\tilde{\mathbf A}} p(\mathbf{v}|\mathbf {y}, \tilde{\mathbf A})\\
+%    &=\prod_{j=1}^N p(v_j|y_{i(j)}),
+%\end{align}
+%where $\tilde A \in \{0, 1\}^{N \times T_y}$ is simply the alignment matrix $A$ with rows that corresponds to the same segment collapse into a single row. which essentially reduces to the discrete case.
+
+%However, in order to optimize Eq. (\ref{eq:trans_prob_segmental}) or even the Baum auxiliary function, marginalizing over all possible segmentations is required when calculating the posterior of the alignment given the features and the image concepts, $p(i(t)|\mathbf x, \mathbf y), t=1,\cdots, T_x$. One way to get around is to use Gibbs sampling by constructing an unbiased estimator of Eq. (\ref{eq:audio_trans_prob}):
+%\begin{align}\label{eq:audio_trans_prob_sampled}
+%     p(i(t)|\mathbf y, \mathbf x) = \mathbb E_{\mathbf s \sim p(\mathbf s|\mathbf x, \mathbf y))}[p(i(t)|\mathbf x, \mathbf y, \mathbf s)]\\
+%     \approx p(i(t)|\mathbf x, \mathbf y, \bar{\mathbf s}),
+%\end{align}
+%where $\bar{\mathbf{s}} \sim p(\bar{\mathbf{s}}=\cdot |\mathbf x, \mathbf y))$.
+
+%Following \cite{Kamper2017}, we randomly sample a segmentation according to the distribution $p(\mathbf s|\mathbf x, \mathbf y)$ using a collapsed Gibbs sampler: Let $\bar{\alpha}_t := \sum_{i=1}^{T_y}\alpha_t(i)$, where $\alpha_t(i)$ is the forward variable defined similarly to the phone-level case as $p(\mathbf{x}_{1:t}, i(t)=i|\mathbf{y})$, and let $l(t)$ denotes the length of the candidate segment that ends at time t, then the segmentation can be segmented backward from $t=T_x$ as:
+%Let $\gamma_t(i, m|\mathbf s) = p(i(t)|\mathbf x, \mathbf y, \mathbf s)$, the parameters of the GMM as:
+%\begin{align}\label{eq:segmm_em_update}
+%    \hat c_m(i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m|\mathbf s)}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m|\mathbf s)}\\
+%    \hat \mu_m(y_i) &= \frac{\sum_{t=1}^{T_x}\gamma_t(i, m|\mathbf s)f_e(x_{s_{i}:s_{i+1}-1})}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m|\mathbf s)}\\
+%    \hat \Sigma_m(y_i) &= 
+%    \frac{\sum_{t=1}^{T_x}\gamma_t(i, m|\mathbf s)}{\sum_{t=1}^{T_x}\sum_{m=1}^{M}\gamma_t(i, m|\mathbf s)}\\
+%    &(f_e(\mathbf x_{s_{i-1}+1:s_{i}}) - \mathbf \mu_m(y_i))(f_e(\mathbf x_{s_i:s_{i+1}-1}) - \mathbf \mu_m(y_i))^\top.
+%\end{align}
+
+% Discuss the use of Dirichlet prior for image concepts
+
+%Existing works on acoustic word discovery has modeled variable-length context by explicitly modeling the segmentation in the generative process. However, since the word segmentation is generally assumed to be not directly observable in the acoustic feature, certain prior assumption about the word length distribution is often used. \cite{Lee2012} models the length probability as:
+%\begin{align}\label{eq:len_prob_seg_hmm}
+%    p(l_i=l|\mathbf z_i, l_1^{i-1}) = &\frac{(1 - \alpha_{z_i})^l \alpha_i}{\sum_{l'=1}^{T_x - \sum_{i'=1}^{i-1}l_{i'}}(1 - \alpha_i)^l \alpha_i},\\
+%    1\leq l \leq T_x - \sum_{i'=1}^{i-1}l_{i'},
+%\end{align}
+%which is simply the length distribution of $i-th$ segment starting with $1$ and continuing with $0$ of a binary string generated by $i.i.d$ Bernoulli random variables with parameter $\alpha_{z_i}$. 
